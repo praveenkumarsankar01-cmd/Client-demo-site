@@ -126,13 +126,14 @@
   });
 
   /* ---------- the clinic tour video ----------
-     The clip is embedded in this file (base64) and turned into a playable blob once the page has loaded.
-     It plays muted while on screen; with reduced motion or Data Saver it waits for the play button. */
+     The Desktop copy carries the clip inside the file (base64), turned into a playable blob once the page has
+     loaded; the hosted page streams it from data-src. It plays muted while on screen; with reduced motion or
+     Data Saver it waits for the play button. */
   var tourUrl = null;
-  function tourSrc() {
+  function tourSrc(v) {
     if (tourUrl) return tourUrl;
     var el = $('#tour-data');
-    if (!el) return '';
+    if (!el) return v.getAttribute('data-src') || '';
     var bin = atob(el.textContent.trim()), bytes = new Uint8Array(bin.length);
     for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
     tourUrl = URL.createObjectURL(new Blob([bytes], { type: 'video/mp4' }));
@@ -142,17 +143,15 @@
   var lowData = conn.saveData || /2g/.test(conn.effectiveType || '');
   var whenIdle = function (fn) { if ('requestIdleCallback' in window) requestIdleCallback(fn, { timeout: 1500 }); else setTimeout(fn, 200); };
   $$('[data-video]').forEach(function (v) {
-    var box = v.closest('.hero-video, .video-wrap') || v.parentElement;
-    var btn = box.querySelector('.video-btn');
-    var bar = box.querySelector('.hero-progress i');
-    if (bar) v.addEventListener('timeupdate', function () { bar.style.width = (v.duration ? v.currentTime / v.duration * 100 : 0) + '%'; });
+    // the play/pause button sits beside the video, or elsewhere with data-controls="<video id>"
+    var btn = (v.id && $('[data-controls="' + v.id + '"]')) || v.parentElement.querySelector('.video-btn');
     var label = btn && btn.querySelector('[data-label]');
     var playText = label ? label.textContent : '';
     var playIcon = btn && btn.querySelector('.ic-play');
     var pauseIcon = btn && btn.querySelector('.ic-pause');
     var loaded = false, userPaused = false, inView = false, ready = !v.hasAttribute('data-after-load');
     var auto = !reduceMotion && !lowData;
-    var load = function () { if (!loaded) { loaded = true; v.src = tourSrc(); } };
+    var load = function () { if (!loaded) { loaded = true; v.src = tourSrc(v); } };
     var play = function () { load(); v.play().catch(function () {}); };
     var sync = function () {
       if (!btn) return;

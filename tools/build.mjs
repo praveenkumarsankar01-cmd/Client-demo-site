@@ -366,29 +366,24 @@ function home() {
   return `
 <main id="main">
 
-<section class="hero" id="tour" aria-labelledby="hero-title">
-  <div class="hero-bg" aria-hidden="true" style="background-image:url(${IMG.poster})"></div>
+<!-- top of the page, as on Origin Dental: the clinic tour edge to edge, with nothing over it -->
+<section class="hero-video" id="tour" aria-label="Clinic tour">
+  <video id="tourVideo" data-video data-after-load muted loop playsinline preload="none" poster="${IMG.poster}" aria-label="A walk through ${C.name}: the house on Morehampton Road, reception, treatment rooms and Mr Roy's consulting room"></video>
+</section>
+
+<section class="hero" aria-labelledby="hero-title">
   <div class="wrap hero-grid">
-    <div class="hero-copy">
+    <div>
       <span class="hero-label">${C.name} · ${C.area}</span>
       <h1 id="hero-title">Natural-looking results, in a surgeon's hands</h1>
+    </div>
+    <div>
       <p class="hero-lead">Anti-wrinkle treatments, dermal fillers, Silhouette Soft lifts, PRP and private minor surgery. Every treatment is performed personally by ${DR.name}, FRCS (Edinburgh).</p>
       <div class="actions">
         <a class="btn btn-primary" ${bookFor('consultation')}>Book a consultation</a>
         <a class="btn btn-ghost" href="#treatments">Explore treatments ${ic('arrow-right')}</a>
       </div>
     </div>
-    <!-- the whole clinic tour, uncropped and with nothing over it -->
-    <figure class="hero-video">
-      <div class="hero-frame">
-        <video data-video data-after-load muted loop playsinline preload="none" poster="${IMG.poster}" aria-label="A walk through ${C.name}: the house on Morehampton Road, reception, treatment rooms and Mr Roy's consulting room"></video>
-        <span class="hero-progress" aria-hidden="true"><i></i></span>
-      </div>
-      <figcaption>
-        <button class="video-btn" type="button">${ic('play')}${ic('pause').replace('aria-hidden="true"', 'aria-hidden="true" hidden')}<span data-label>Play the clinic tour</span></button>
-        <span>Clinic tour · 12 Morehampton Road, Donnybrook</span>
-      </figcaption>
-    </figure>
   </div>
   <div class="hero-strip">
     <div class="wrap">
@@ -396,7 +391,7 @@ function home() {
       <span><b>20+ years</b>in aesthetic medicine</span>
       <span><b>Silhouette Soft</b>Pioneered in Ireland, 2012</span>
       <span><b>No waiting list</b>for minor surgery</span>
-      <span><b>${C.consultation}</b>consultation with Mr Roy</span>
+      <button class="video-btn" type="button" data-controls="tourVideo">${ic('play')}${ic('pause').replace('aria-hidden="true"', 'aria-hidden="true" hidden')}<span data-label>Play the clinic tour</span></button>
     </div>
   </div>
 </section>
@@ -716,15 +711,20 @@ const modals = `
 const css = read('assets/site.css').toString();
 const js = read('assets/site.js').toString();
 const video = read('assets/media/tour.mp4').toString('base64');
-const html = head(css) + chrome() + home() + modals + foot() + `
-<script type="application/json" id="qv-data">${JSON.stringify(QV).replace(/</g, '\\u003c')}</script>
-<script type="application/octet-stream" id="tour-data">${video}</script>
+// index.html (hosted) streams the video from assets/media; the Desktop copy carries it inside, so it works on its own
+const page = embed => (head(css) + chrome() + home() + modals + foot())
+  .replace('id="tourVideo" data-video', `id="tourVideo" data-src="assets/media/tour.mp4" data-video`)
+  .replace(/<video data-video muted/g, '<video data-src="assets/media/tour.mp4" data-video muted') + `
+<script type="application/json" id="qv-data">${JSON.stringify(QV).replace(/</g, '\\u003c')}</script>${embed ? `
+<script type="application/octet-stream" id="tour-data">${video}</script>` : ''}
 <script>
 ${js}
 </script>
 </body>
 </html>
 `;
-const outs = [join(ROOT, 'index.html'), join(ROOT, '..', 'Excellence.html')];
-for (const f of outs) writeFileSync(f, html);
-console.log(`built the front page, ${(statSync(outs[0]).size / 1048576).toFixed(2)} MB → ${outs.join(' and ')}`);
+const outs = [[join(ROOT, 'index.html'), false], [join(ROOT, '..', 'Excellence.html'), true]];
+for (const [f, embed] of outs) {
+  writeFileSync(f, page(embed));
+  console.log(`built ${f} (${(statSync(f).size / 1048576).toFixed(2)} MB${embed ? ', video inside' : ', video from assets/media'})`);
+}
