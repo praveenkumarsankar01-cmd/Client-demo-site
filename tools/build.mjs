@@ -85,10 +85,11 @@ ${SPRITE}
 <a class="skip-link" href="#main">Skip to content</a>`;
 }
 
-function megaPanel(id, cols, promo, promoCol) {
+// the treatment groups only, in columns, as on the clinic's current menu
+function megaPanel(id, cols) {
   return `<div class="dd mega" id="${id}">
             <div class="mega-cols" style="--cols:${cols.length}">
-              ${cols.map((col, i) => `<div class="mega-col">${col.map(g => `<div class="mega-group"><a class="mega-head" ${qvC(g.cat)}>${esc(g.label)}</a><ul>${g.items.map(it => `<li>${itemLink(it)}</li>`).join('')}</ul></div>`).join('')}${i === promoCol ? promo : ''}</div>`).join('\n              ')}
+              ${cols.map(col => `<div class="mega-col">${col.map(g => `<div class="mega-group"><a class="mega-head" ${qvC(g.cat)}>${esc(g.label)}</a><ul>${g.items.map(it => `<li>${itemLink(it)}</li>`).join('')}</ul></div>`).join('')}</div>`).join('\n              ')}
             </div>
             <div class="mega-foot">
               <a class="text-link" href="#all-treatments">View all treatments ${ic('arrow-right')}</a>
@@ -99,8 +100,6 @@ function megaPanel(id, cols, promo, promoCol) {
 }
 
 function chrome() {
-  const promoW = `<a class="mega-promo" href="#surgeon"><img src="${DR.photo}" alt="" loading="lazy" decoding="async"><span><b>Every treatment by Mr Roy</b>M.B.B.S, FRCS (Edinburgh), over 20 years in aesthetic medicine</span></a>`;
-  const promoM = `<a class="mega-promo" href="#all-treatments" data-qv="men">${photo(38167607, 500, '', { pos: 'center 30%' })}<span><b>Treatments for men</b>Discreet treatments planned around a masculine face ${ic('arrow-right')}</span></a>`;
   const drawerGroups = menu => menu.flat().map(g => `<details class="sub"><summary>${esc(g.label)} ${ic('chevron-down', 'chev')}</summary><a ${qvC(g.cat)}><b>All ${esc(CAT[g.cat].short)}</b></a>${g.items.map(itemLink).join('')}</details>`).join('');
   return `
 <div class="topbar">
@@ -134,11 +133,11 @@ function chrome() {
         </li>
         <li class="has-dd has-mega">
           <button type="button" class="nav-top" data-dropdown aria-expanded="false" aria-controls="dd-treat">Select Treatment ${ic('chevron-down', 'chev')}</button>
-          ${megaPanel('dd-treat', menuWomen, promoW, 2)}
+          ${megaPanel('dd-treat', menuWomen)}
         </li>
         <li class="has-dd has-mega">
           <button type="button" class="nav-top" data-dropdown aria-expanded="false" aria-controls="dd-men">Men ${ic('chevron-down', 'chev')}</button>
-          ${megaPanel('dd-men', menuMen, promoM, 3)}
+          ${megaPanel('dd-men', menuMen)}
         </li>
         <li><a class="nav-top" href="#prices">Price guide</a></li>
         <li><a class="nav-top" href="#clinic">Clinic tour</a></li>
@@ -222,7 +221,7 @@ function moreTreatments() {
   });
   return `
 <section class="more" aria-labelledby="mt-title" data-carousel-box>
-  <div class="more-bg" aria-hidden="true" style="background-image:url(${px(4586746, 1920)})"></div>
+  <div class="more-bg" aria-hidden="true" style="background-image:url(${px(6303609, 1920)})"></div>
   <div class="wrap">
     <div class="more-head">
       <h2 id="mt-title">Other treatments</h2>
@@ -368,15 +367,28 @@ function home() {
 <main id="main">
 
 <section class="hero" id="tour" aria-labelledby="hero-title">
-  <video data-video data-after-load muted loop playsinline preload="none" poster="${IMG.poster}" aria-label="A walk through ${C.name}: the house on Morehampton Road, reception, treatment rooms and Mr Roy's consulting room"></video>
-  <div class="wrap hero-inner">
-    <span class="hero-label">${C.name} · ${C.area}</span>
-    <h1 id="hero-title">Natural-looking results, in a surgeon's hands</h1>
-    <p class="hero-lead">Anti-wrinkle treatments, dermal fillers, Silhouette Soft lifts, PRP and private minor surgery. Every treatment is performed personally by ${DR.name}, FRCS (Edinburgh).</p>
-    <div class="actions">
-      <a class="btn btn-primary" ${bookFor('consultation')}>Book a consultation</a>
-      <a class="btn btn-ghost" href="#treatments">Explore treatments ${ic('arrow-right')}</a>
+  <div class="hero-bg" aria-hidden="true" style="background-image:url(${IMG.poster})"></div>
+  <div class="wrap hero-grid">
+    <div class="hero-copy">
+      <span class="hero-label">${C.name} · ${C.area}</span>
+      <h1 id="hero-title">Natural-looking results, in a surgeon's hands</h1>
+      <p class="hero-lead">Anti-wrinkle treatments, dermal fillers, Silhouette Soft lifts, PRP and private minor surgery. Every treatment is performed personally by ${DR.name}, FRCS (Edinburgh).</p>
+      <div class="actions">
+        <a class="btn btn-primary" ${bookFor('consultation')}>Book a consultation</a>
+        <a class="btn btn-ghost" href="#treatments">Explore treatments ${ic('arrow-right')}</a>
+      </div>
     </div>
+    <!-- the whole clinic tour, uncropped and with nothing over it -->
+    <figure class="hero-video">
+      <div class="hero-frame">
+        <video data-video data-after-load muted loop playsinline preload="none" poster="${IMG.poster}" aria-label="A walk through ${C.name}: the house on Morehampton Road, reception, treatment rooms and Mr Roy's consulting room"></video>
+        <span class="hero-progress" aria-hidden="true"><i></i></span>
+      </div>
+      <figcaption>
+        <button class="video-btn" type="button">${ic('play')}${ic('pause').replace('aria-hidden="true"', 'aria-hidden="true" hidden')}<span data-label>Play the clinic tour</span></button>
+        <span>Clinic tour · 12 Morehampton Road, Donnybrook</span>
+      </figcaption>
+    </figure>
   </div>
   <div class="hero-strip">
     <div class="wrap">
@@ -384,7 +396,7 @@ function home() {
       <span><b>20+ years</b>in aesthetic medicine</span>
       <span><b>Silhouette Soft</b>Pioneered in Ireland, 2012</span>
       <span><b>No waiting list</b>for minor surgery</span>
-      <a class="hero-tour" href="#clinic">${ic('play')} Inside our clinic, 12 Morehampton Road</a>
+      <span><b>${C.consultation}</b>consultation with Mr Roy</span>
     </div>
   </div>
 </section>

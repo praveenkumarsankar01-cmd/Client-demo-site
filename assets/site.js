@@ -142,7 +142,10 @@
   var lowData = conn.saveData || /2g/.test(conn.effectiveType || '');
   var whenIdle = function (fn) { if ('requestIdleCallback' in window) requestIdleCallback(fn, { timeout: 1500 }); else setTimeout(fn, 200); };
   $$('[data-video]').forEach(function (v) {
-    var btn = v.parentElement.querySelector('.video-btn');
+    var box = v.closest('.hero-video, .video-wrap') || v.parentElement;
+    var btn = box.querySelector('.video-btn');
+    var bar = box.querySelector('.hero-progress i');
+    if (bar) v.addEventListener('timeupdate', function () { bar.style.width = (v.duration ? v.currentTime / v.duration * 100 : 0) + '%'; });
     var label = btn && btn.querySelector('[data-label]');
     var playText = label ? label.textContent : '';
     var playIcon = btn && btn.querySelector('.ic-play');
