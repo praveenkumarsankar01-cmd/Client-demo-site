@@ -33,17 +33,17 @@ const ic = (n, extra = '') => `<i class="ic ic-${n}${extra ? ' ' + extra : ''}" 
 const stars = n => `<span class="stars" aria-label="${n} out of 5 stars">${ic('star').repeat(n)}</span>`;
 
 /* ---------- links and small builders ----------
-   Treatments open a preview (data-qv); without script the link falls back to the treatment directory. */
-const qvT = k => `href="#all-treatments" data-qv="t:${k}"`;
-const qvC = c => `href="#all-treatments" data-qv="c:${c}"`;
+   Treatment links open the Treatments page (a second page in the same file) at that treatment or group. */
+const tLink = k => `href="#/treatments/${k}"`;
+const cLink = c => `href="#/treatments/${c}"`;
 const bookFor = k => `href="#book" data-service="${k}"`;
 const catOf = k => CAT[T[k].cat];
 const priceOf = k => T[k].price || catOf(k).price || catOf(k).priceText;
 const priceHtml = p => p.startsWith('From ') ? `From <b>${esc(p.slice(5))}</b>` : `<b>${esc(p)}</b>`;
 const itemLink = item => {
   const [k, label] = Array.isArray(item) ? item : [item];
-  if (k.startsWith('@')) return `<a ${qvC(k.slice(1))}>${esc(label)}</a>`;
-  return `<a ${qvT(k)}>${esc(label || T[k].menu || T[k].title)}</a>`;
+  if (k.startsWith('@')) return `<a ${cLink(k.slice(1))}>${esc(label)}</a>`;
+  return `<a ${tLink(k)}>${esc(label || T[k].menu || T[k].title)}</a>`;
 };
 const photo = (id, w, alt, { pos = 'center' } = {}) =>
   `<img src="${px(id, w)}" alt="${esc(alt)}" loading="lazy" decoding="async" style="object-position:${pos}">`;
@@ -58,6 +58,9 @@ function serviceOptions(blank) {
   return `<option value="not-sure">${blank}</option><option value="consultation">Consultation with Mr Roy (${C.consultation})</option>` +
     catOrder.map(c => `<optgroup label="${esc(CAT[c].title)}">${inCat(c).map(k => `<option value="${k}">${esc(T[k].title)}</option>`).join('')}</optgroup>`).join('');
 }
+
+// social icons: placeholders for the demo (data-dummy links go nowhere); the real profiles are in content.mjs
+const social = () => C.social.map(([k, label]) => `<a href="#" data-dummy aria-label="${label}">${ic(k)}</a>`).join('');
 
 /* ---------- page frame ---------- */
 function head(css) {
@@ -89,10 +92,10 @@ ${SPRITE}
 function megaPanel(id, cols) {
   return `<div class="dd mega" id="${id}">
             <div class="mega-cols" style="--cols:${cols.length}">
-              ${cols.map(col => `<div class="mega-col">${col.map(g => `<div class="mega-group"><a class="mega-head" ${qvC(g.cat)}>${esc(g.label)}</a><ul>${g.items.map(it => `<li>${itemLink(it)}</li>`).join('')}</ul></div>`).join('')}</div>`).join('\n              ')}
+              ${cols.map(col => `<div class="mega-col">${col.map(g => `<div class="mega-group"><a class="mega-head" ${cLink(g.cat)}><span class="mega-ico">${iconSvg(CAT[g.cat].icon)}</span>${esc(g.label)}</a><ul>${g.items.map(it => `<li>${itemLink(it)}</li>`).join('')}</ul></div>`).join('')}</div>`).join('\n              ')}
             </div>
             <div class="mega-foot">
-              <a class="text-link" href="#all-treatments">View all treatments ${ic('arrow-right')}</a>
+              <a class="text-link" href="#/treatments">View all treatments ${ic('arrow-right')}</a>
               <span>Not sure which treatment is right for you? Start with a consultation (${C.consultation}).</span>
               <a class="btn btn-primary btn-sm" ${bookFor('consultation')}>Book a consultation</a>
             </div>
@@ -100,7 +103,7 @@ function megaPanel(id, cols) {
 }
 
 function chrome() {
-  const drawerGroups = menu => menu.flat().map(g => `<details class="sub"><summary>${esc(g.label)} ${ic('chevron-down', 'chev')}</summary><a ${qvC(g.cat)}><b>All ${esc(CAT[g.cat].short)}</b></a>${g.items.map(itemLink).join('')}</details>`).join('');
+  const drawerGroups = menu => menu.flat().map(g => `<details class="sub"><summary>${esc(g.label)} ${ic('chevron-down', 'chev')}</summary><a ${cLink(g.cat)}><b>All ${esc(CAT[g.cat].short)}</b></a>${g.items.map(itemLink).join('')}</details>`).join('');
   return `
 <div class="topbar">
   <div class="wrap">
@@ -111,7 +114,7 @@ function chrome() {
     </ul>
     <div class="topbar-right">
       <span class="open-badge" data-open-badge>Mon–Fri 10:30 AM – 4:30 PM</span>
-      <span class="topbar-social">${C.social.map(([k, label, url]) => `<a href="${url}" target="_blank" rel="noopener" aria-label="${label}">${ic(k)}</a>`).join('')}</span>
+      <span class="topbar-social">${social()}</span>
       <a class="topbar-cta" ${bookFor('consultation')}>Book consultation</a>
     </div>
   </div>
@@ -163,8 +166,8 @@ function chrome() {
       <button class="menu-toggle drawer-close" type="button" data-drawer-close aria-label="Close menu" style="display:grid">${ic('xmark')}</button>
     </div>
     <details><summary>About ${ic('chevron-down', 'chev')}</summary><a href="#about">About ${C.name}</a><a href="#surgeon">About Mr Shunil Roy</a><a href="#stories">Video testimonials</a><a href="#prices">Price guide</a></details>
-    <details><summary>Select Treatment ${ic('chevron-down', 'chev')}</summary>${drawerGroups(menuWomen)}<a class="drawer-all" href="#all-treatments">View all treatments</a></details>
-    <details><summary>Men ${ic('chevron-down', 'chev')}</summary><a href="#all-treatments" data-qv="men"><b>Treatments for men</b></a>${drawerGroups(menuMen)}</details>
+    <details><summary>Select Treatment ${ic('chevron-down', 'chev')}</summary>${drawerGroups(menuWomen)}<a class="drawer-all" href="#/treatments">View all treatments</a></details>
+    <details><summary>Men ${ic('chevron-down', 'chev')}</summary><a href="#/treatments/men"><b>Treatments for men</b></a>${drawerGroups(menuMen)}</details>
     <a class="drawer-link" href="#prices">Price guide</a>
     <a class="drawer-link" href="#clinic">Clinic tour</a>
     <a class="drawer-link" href="#find">Contact</a>
@@ -182,9 +185,9 @@ function foot() {
       <div class="footer-about">
         <a class="brand" href="#top"><img src="${IMG.logo}" alt="${C.name}" width="${Math.round(LOGO.w * 54 / LOGO.h)}" height="54" loading="lazy" decoding="async"></a>
         <p>${esc(C.tagline)}.</p>
-        <span class="footer-social">${C.social.map(([k, label, url]) => `<a href="${url}" target="_blank" rel="noopener" aria-label="${label}">${ic(k)}</a>`).join('')}</span>
+        <span class="footer-social">${social()}</span>
       </div>
-      <div><h4>Treatments</h4><ul>${catOrder.map(c => `<li><a ${qvC(c)}>${esc(CAT[c].title)}</a></li>`).join('')}<li><a href="#all-treatments" data-qv="men">Treatments for men</a></li><li><a href="#all-treatments"><b>View all treatments</b></a></li></ul></div>
+      <div><h4>Treatments</h4><ul>${catOrder.map(c => `<li><a ${cLink(c)}>${esc(CAT[c].title)}</a></li>`).join('')}<li><a href="#/treatments/men">Treatments for men</a></li><li><a href="#/treatments"><b>View all treatments</b></a></li></ul></div>
       <div><h4>The clinic</h4><ul><li><a href="#about">About ${C.name}</a></li><li><a href="#surgeon">About Mr Shunil Roy</a></li><li><a href="#clinic">Why come to us</a></li><li><a href="#stories">Video testimonials</a></li><li><a href="#prices">Price guide</a></li><li><a href="#clinic">Clinic tour</a></li></ul></div>
       <div><h4>Contact</h4><ul>
         <li>${C.address}</li>
@@ -214,9 +217,9 @@ function moreTreatments() {
     ['c', 'silhouette-soft', 'lift'], ['c', 'prp', 'tube'], ['t', 'hair-thinning', 'hair'], ['c', 'minor-surgery', 'scalpel'],
     ['t', 'mole-removal', 'magnifier'], ['c', 'skincare', 'skin'], ['men', '', 'man'], ['consult', '', 'consult']
   ].map(([kind, k, icon]) => {
-    if (kind === 'c') return [qvC(k), CAT[k].title, CAT[k].card, icon];
-    if (kind === 't') return [qvT(k), T[k].title, firstSentence(T[k].text), icon];
-    if (kind === 'men') return ['href="#all-treatments" data-qv="men"', 'Treatments for Men', 'Anti-wrinkle, jawline, hair loss and sweating treatments for men.', icon];
+    if (kind === 'c') return [cLink(k), CAT[k].title, CAT[k].card, icon];
+    if (kind === 't') return [tLink(k), T[k].title, firstSentence(T[k].text), icon];
+    if (kind === 'men') return ['href="#/treatments/men"', 'Treatments for Men', 'Anti-wrinkle, jawline, hair loss and sweating treatments for men.', icon];
     return [bookFor('consultation'), 'Consultation', `A ${C.consultation} consultation with Mr Roy, with an accurate written price.`, icon];
   });
   return `
@@ -270,31 +273,25 @@ function reviewsBand() {
 </section>`;
 }
 
+// contact details in a row, then the map edge to edge as a plain rectangle
 function findUs() {
   return `
-<section class="section" id="find" aria-labelledby="find-title">
+<section class="find" id="find" aria-labelledby="find-title">
   <div class="wrap">
     <div class="section-head">
       <span class="label">Location</span>
       <h2 id="find-title">Find us in Donnybrook</h2>
       <p>A private clinic on Morehampton Road, Dublin 4, a short journey from the city centre.</p>
     </div>
-    <div class="location">
-      <div class="map">
-        <iframe src="${MAP}" title="Map showing ${C.name}, ${C.address}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
-      </div>
-      <div class="loc-info">
-        <div><b>Address</b><span>${C.address}</span></div>
-        <div><b>Reception</b><a href="tel:${C.tel}">${C.phone}</a></div>
-        <div><b>Email</b><a href="mailto:${C.email}">${C.email}</a></div>
-        <div><b>Opening hours</b><span class="open-badge" data-open-badge></span>
-          <table class="hours"><tbody>
-            ${C.hours.map(([d, nm, t]) => `<tr data-day="${d}"><td>${nm}</td><td>${t}</td></tr>`).join('\n            ')}
-          </tbody></table>
-        </div>
-        <a class="btn btn-outline" href="${DIRECTIONS}" target="_blank" rel="noopener">Get directions</a>
-      </div>
+    <div class="loc-strip">
+      <div><b>Address</b><span>${C.address}</span></div>
+      <div><b>Reception</b><a href="tel:${C.tel}">${C.phone}</a><a href="mailto:${C.email}">${C.email}</a></div>
+      <div><b>Opening hours</b><span class="open-badge" data-open-badge></span><span>Monday – Friday 10:30 AM – 4:30 PM<br>Saturday &amp; Sunday closed</span></div>
+      <div class="loc-cta"><a class="btn btn-primary" href="${DIRECTIONS}" target="_blank" rel="noopener">${ic('location-dot')} Get directions</a></div>
     </div>
+  </div>
+  <div class="map">
+    <iframe src="${MAP}" title="Map showing ${C.name}, ${C.address}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
   </div>
 </section>`;
 }
@@ -336,7 +333,7 @@ function home() {
   ];
   const card = ([kind, k]) => {
     const c = kind === 'c' ? CAT[k] : { ...CAT[T[k].cat], title: T[k].title, card: 'Subtle, natural-looking volume and definition for the lips.', photo: T[k].photo, pos: T[k].pos, price: T[k].price, icon: 'lips' };
-    return `<a class="svc-card" ${kind === 'c' ? qvC(k) : qvT(k)}>
+    return `<a class="svc-card" ${kind === 'c' ? cLink(k) : tLink(k)}>
         <div class="svc-card-media">
           <div class="svc-card-img">${photo(c.photo, 600, '', { pos: c.pos })}</div>
           <span class="svc-card-badge">${iconSvg(c.icon)}</span>
@@ -365,6 +362,7 @@ function home() {
 
   return `
 <main id="main">
+<div data-view="home">
 
 <!-- top of the page, as on Origin Dental: the clinic tour edge to edge, with nothing over it -->
 <section class="hero-video" id="tour" aria-label="Clinic tour">
@@ -446,7 +444,7 @@ function home() {
   <div class="wrap">
     <div class="head-split">
       <div><span class="label">Treatments</span><h2 id="tr-title">Non-surgical, minimally invasive and minor surgical treatments</h2></div>
-      <div><p>From a single anti-wrinkle area to a Silhouette Soft lift, each treatment is planned around your face and priced in writing after your consultation.</p><div class="svc-nav"><a class="text-link" href="#all-treatments">View all treatments ${ic('arrow-right')}</a><span class="car-nav"><button class="car-btn car-btn--light" type="button" data-car-prev aria-label="Previous treatments">${ic('chevron-left')}</button><button class="car-btn car-btn--light" type="button" data-car-next aria-label="Next treatments">${ic('chevron-right')}</button></span></div></div>
+      <div><p>From a single anti-wrinkle area to a Silhouette Soft lift, each treatment is planned around your face and priced in writing after your consultation.</p><div class="svc-nav"><a class="text-link" href="#/treatments">View all treatments ${ic('arrow-right')}</a><span class="car-nav"><button class="car-btn car-btn--light" type="button" data-car-prev aria-label="Previous treatments">${ic('chevron-left')}</button><button class="car-btn car-btn--light" type="button" data-car-next aria-label="Next treatments">${ic('chevron-right')}</button></span></div></div>
     </div>
     <div class="car-track svc-cards" data-carousel tabindex="0" role="region" aria-label="Treatments">
       ${cards.map(card).join('\n      ')}
@@ -455,7 +453,7 @@ function home() {
       <div><h3>A lump, cyst or mole that worries you?</h3><p>Private minor surgery in Dublin with no HSE waiting list and no referral needed. Same-day treatment is also available.</p></div>
       <div class="actions">
         <a class="btn btn-primary" href="tel:${C.tel}">${ic('phone')} Call ${C.phone}</a>
-        <a class="btn btn-outline" ${qvC('minor-surgery')}>Minor surgery</a>
+        <a class="btn btn-outline" ${cLink('minor-surgery')}>Minor surgery</a>
       </div>
     </div>
   </div>
@@ -480,30 +478,10 @@ function home() {
         <div class="finder-doc"><img src="${DR.photo}" alt="" loading="lazy" decoding="async"><span><b>${DR.name}</b>Performs every treatment personally</span></div>
         <div class="actions">
           <a class="btn btn-primary" ${bookFor(k)}>Book a consultation</a>
-          <a class="btn btn-outline" ${qvT(k)}>About ${esc(lower(T[k].title))}</a>
+          <a class="btn btn-outline" ${tLink(k)}>About ${esc(lower(T[k].title))}</a>
         </div>
       </div>`).join('\n      ')}
     </div>
-  </div>
-</section>
-
-<section class="section section--soft directory" id="all-treatments" aria-labelledby="dir-title">
-  <div class="wrap" data-tabs>
-    <div class="head-split">
-      <div><span class="label">Every treatment</span><h2 id="dir-title">Browse treatments by category</h2></div>
-      <div><p>The same categories as our treatment menu, for women and for men. Choose a concern to see how it is treated and what it costs.</p>
-        <div class="dir-tabs" role="tablist" aria-label="Treatment menus">
-          <button type="button" role="tab" id="dt-0" aria-controls="dp-0" aria-selected="true">All treatments</button>
-          <button type="button" role="tab" id="dt-1" aria-controls="dp-1" aria-selected="false" tabindex="-1">Men</button>
-        </div>
-      </div>
-    </div>
-    ${[menuWomen, menuMen].map((menu, i) => `<div class="dir-panel" role="tabpanel" id="dp-${i}" aria-labelledby="dt-${i}">
-      <div class="dir-grid" style="--cols:${menu.length}">
-        ${menu.map(col => `<div class="dir-col">${col.map(g => `<div class="dir-group"><a class="dir-head" ${qvC(g.cat)}><span class="dir-ico">${iconSvg(CAT[g.cat].icon)}</span>${esc(g.label)}</a><ul>${g.items.map(it => `<li>${itemLink(it)}</li>`).join('')}</ul><a class="dir-all" ${qvC(g.cat)}>View all ${ic('arrow-right')}</a></div>`).join('')}</div>`).join('\n        ')}
-      </div>
-    </div>`).join('\n    ')}
-    <div class="dir-foot"><a class="btn btn-primary" ${bookFor('consultation')}>Book a consultation</a><a class="btn btn-outline" href="#prices">See the price guide</a></div>
   </div>
 </section>
 
@@ -607,7 +585,7 @@ ${moreTreatments()}
     </div>
     <div class="price-grid">
       <div class="price-card price-card--feature"><span class="label">Start here</span><h3>Consultation</h3><b class="price-big">${C.consultation}</b><p>With Mr Roy, including an examination, an honest discussion of your options and an accurate price.</p><a class="btn btn-primary" ${bookFor('consultation')}>Book a consultation</a></div>
-      ${catOrder.map(c => `<a class="price-card" ${qvC(c)}><span class="price-ico">${iconSvg(CAT[c].icon)}</span><h3>${esc(CAT[c].title)}</h3><table class="price-table"><tbody>${CAT[c].prices.map(([x, y]) => `<tr><th scope="row">${esc(x)}</th><td>${esc(y)}</td></tr>`).join('')}</tbody></table><span class="text-link">About ${esc(lower(CAT[c].short))} ${ic('arrow-right')}</span></a>`).join('\n      ')}
+      ${catOrder.map(c => `<a class="price-card" ${cLink(c)}><span class="price-ico">${iconSvg(CAT[c].icon)}</span><h3>${esc(CAT[c].title)}</h3><table class="price-table"><tbody>${CAT[c].prices.map(([x, y]) => `<tr><th scope="row">${esc(x)}</th><td>${esc(y)}</td></tr>`).join('')}</tbody></table><span class="text-link">About ${esc(lower(CAT[c].short))} ${ic('arrow-right')}</span></a>`).join('\n      ')}
     </div>
   </div>
 </section>
@@ -651,19 +629,93 @@ ${moreTreatments()}
 ${reviewsBand()}
 ${findUs()}
 
+</div>
+${treatmentsPage()}
 </main>`;
 }
 
-/* ---------- treatment previews: the data the page script renders into the preview dialog ---------- */
+/* ==========================================================================
+   The Treatments page: every "Learn more" and menu link opens this one page at its treatment
+   ========================================================================== */
+function treatmentsPage() {
+  const intro = ({ id, label, title, lead, about = [], facts, suitable, prices, photoHtml, icon, service }) => `
+    <div class="tp-intro">
+      <div class="tp-photo">${photoHtml}<span class="svc-card-badge">${iconSvg(icon)}</span></div>
+      <div class="tp-copy">
+        <span class="label">${esc(label)}</span>
+        <h2 id="${id}-title">${esc(title)}</h2>
+        <p class="tp-lead">${esc(lead)}</p>
+        ${about.map(p => `<p>${esc(p)}</p>`).join('\n        ')}
+        <dl class="facts">${facts.map(([a, b]) => `<div><dt>${esc(a)}</dt><dd>${esc(b)}</dd></div>`).join('')}</dl>
+        ${suitable ? `<div class="tp-cols">
+          <div><b class="qv-sub">This may suit you if you have</b><ul class="ticks">${suitable.map(x => `<li>${ic('check')}<span>${esc(x)}</span></li>`).join('')}</ul></div>
+          <div><b class="qv-sub">Price guide</b><table class="price-table"><tbody>${prices.map(([x, y]) => `<tr><th scope="row">${esc(x)}</th><td>${esc(y)}</td></tr>`).join('')}</tbody></table></div>
+        </div>` : ''}
+        <div class="actions">
+          <a class="btn btn-primary" ${bookFor(service)}>Book a consultation</a>
+          <a class="btn btn-outline" href="tel:${C.tel}">${ic('phone')} ${C.phone}</a>
+        </div>
+      </div>
+    </div>`;
+  const card = k => `<article class="tp-card" id="tr-${k}">
+          <h4>${esc(T[k].title)}</h4>
+          <p>${esc(T[k].text)}</p>
+          <div class="tp-card-foot"><span>${priceHtml(priceOf(k))}</span><a class="text-link" ${bookFor(k)}>Book ${ic('arrow-right')}</a></div>
+        </article>`;
+  const category = (c, i) => {
+    const k = CAT[c], items = inCat(c);
+    return `
+<section class="section tp-cat${i % 2 ? ' section--soft' : ''}" id="tr-${c}" aria-labelledby="tr-${c}-title">
+  <div class="wrap">${intro({ id: `tr-${c}`, label: k.short, title: k.title, lead: k.lead, about: k.about, facts: k.facts, suitable: k.suitable, prices: k.prices, photoHtml: photo(k.photo, 900, k.title, { pos: k.pos }), icon: k.icon, service: items[0] })}
+    <div class="tp-areas-head"><h3>Areas we treat</h3><span>${items.length} treatments</span></div>
+    <div class="tp-grid">
+        ${items.map(card).join('\n        ')}
+    </div>
+    <div class="tp-more">
+      <div><h3>How treatment works</h3><ol class="steps">${k.steps.map(([x, y]) => `<li><h4>${esc(x)}</h4><p>${esc(y)}</p></li>`).join('')}</ol></div>
+      <div><h3>Questions</h3>${faqList(k.faq)}</div>
+    </div>
+  </div>
+</section>`;
+  };
+  const men = `
+<section class="section tp-cat${catOrder.length % 2 ? ' section--soft' : ''}" id="tr-men" aria-labelledby="tr-men-title">
+  <div class="wrap">${intro({ id: 'tr-men', label: 'Men', title: 'Treatments for men', lead: 'More men than ever come to us for discreet treatments: softening frown lines, defining the jaw, treating hair loss and excessive sweating, and removing moles and cysts. Plans are built around a masculine face, so results look like you on a good day.', facts: [['Consultation', C.consultation], ['Downtime', 'Little or none'], ['Practitioner', 'Mr Roy, every visit']], photoHtml: photo(38167607, 900, 'A man receiving an anti-wrinkle treatment', { pos: 'center 30%' }), icon: 'man', service: 'consultation' })}
+    <div class="tp-areas-head"><h3>Popular with men</h3><span>${menPopular.length} treatments</span></div>
+    <div class="tp-grid">
+        ${menPopular.map(k => `<a class="tp-card tp-card--link" ${tLink(k)}><h4>${esc(T[k].title)}</h4><p>${esc(firstSentence(T[k].text))}</p><div class="tp-card-foot"><span>${priceHtml(priceOf(k))}</span><span class="text-link">Read more ${ic('arrow-right')}</span></div></a>`).join('\n        ')}
+    </div>
+  </div>
+</section>`;
+  return `
+<div data-view="treatments" hidden>
+<section class="tp-head" aria-labelledby="tp-title">
+  <div class="wrap">
+    <nav class="crumbs" aria-label="Breadcrumb"><a href="#/">Home</a>${ic('chevron-right')}<span>Treatments</span></nav>
+    <span class="label">Treatments</span>
+    <h1 id="tp-title">All treatments</h1>
+    <p class="lead">${Object.keys(T).length} treatments and procedures in seven groups, from a single anti-wrinkle area to a Silhouette Soft lift. Every one is performed by Mr Roy and priced in writing after your consultation.</p>
+    <a class="text-link tp-back" href="#/">${ic('chevron-left')} Back to the home page</a>
+  </div>
+</section>
+<nav class="tp-jump" aria-label="Treatment groups"><div class="wrap">${catOrder.map(c => `<a ${cLink(c)}>${esc(CAT[c].short)}</a>`).join('')}<a href="#/treatments/men">Men</a></div></nav>
+${catOrder.map(category).join('')}
+${men}
+<section class="section" aria-label="Book a consultation">
+  <div class="wrap">
+    <div class="tp-cta">
+      <div><h2>Not sure which treatment you need?</h2><p>Book a consultation and Mr Roy will examine you, explain your options and give you an accurate price. Consultations are ${C.consultation}.</p></div>
+      <div class="actions"><a class="btn btn-primary" ${bookFor('consultation')}>Book a consultation</a><a class="btn btn-outline" href="tel:${C.tel}">${ic('phone')} ${C.phone}</a></div>
+    </div>
+  </div>
+</section>
+</div>`;
+}
+
+/* ---------- Mr Roy's profile, shown in a dialog ---------- */
 const QV = {
-  icons: { check: ic('check'), arrow: ic('arrow-right'), phone: ic('phone') },
-  phone: C.phone, tel: C.tel, consultation: C.consultation,
-  cats: Object.fromEntries(catOrder.map(c => {
-    const k = CAT[c];
-    return [c, { title: k.title, short: k.short, lead: k.lead, about: k.about, facts: k.facts, prices: k.prices, suitable: k.suitable, photo: px(k.photo, 900), pos: k.pos, items: inCat(c) }];
-  })),
-  t: Object.fromEntries(Object.keys(T).map(k => [k, { title: T[k].title, cat: T[k].cat, text: T[k].text, price: priceOf(k), photo: T[k].photo ? px(T[k].photo, 900) : '', pos: T[k].pos || '' }])),
-  men: { title: 'Treatments for men', lead: 'More men than ever come to us for discreet treatments: softening frown lines, defining the jaw, treating hair loss and excessive sweating, and removing moles and cysts. Plans are built around a masculine face, so results look like you on a good day.', photo: px(38167607, 900), pos: 'center 30%', items: menPopular },
+  icons: { phone: ic('phone') },
+  phone: C.phone, tel: C.tel,
   roy: { name: DR.name, quals: DR.quals, role: DR.role, photo: DR.photo, about: DR.about, timeline: DR.timeline, focus: DR.focus }
 };
 

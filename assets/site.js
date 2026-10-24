@@ -1,8 +1,7 @@
 /* ==========================================================================
    Excellence Medical — site behaviour
-   No dependencies. One front page: menu links scroll to its sections, and every treatment opens a
-   short preview (data-qv="t:<treatment>", "c:<category>", "men" or "roy"). Without script those links
-   fall back to the treatment directory on the page.
+   No dependencies. Two pages in one file: the front page, and the Treatments page that every
+   "Learn more" and menu link opens at its treatment (#/treatments/<slug>). Mr Roy's profile opens in a dialog.
    ========================================================================== */
 (function () {
   'use strict';
@@ -62,9 +61,10 @@
   if (opener) opener.addEventListener('click', function () { setDrawer(true); });
   $$('[data-drawer-close]').forEach(function (el) { el.addEventListener('click', function () { setDrawer(false); }); });
 
-  // following a link inside a menu closes the menu
+  // following a link inside a menu closes the menu; placeholder links (data-dummy) go nowhere
   document.addEventListener('click', function (e) {
     if (!e.target.closest) return;
+    if (e.target.closest('[data-dummy]')) { e.preventDefault(); return; }
     if (e.target.closest('.dd a')) closeAll();
     if (e.target.closest('#drawer a')) setDrawer(false);
   });
@@ -236,61 +236,67 @@
   var bookModal = $('#bookModal'), enquiryModal = $('#enquiryModal'), qvModal = $('#qvModal');
   $$('[data-enquiry]').forEach(function (b) { b.addEventListener('click', function () { setModal(enquiryModal, true); }); });
 
-  /* ---------- treatment previews ---------- */
+  /* ---------- pages: the front page, and the Treatments page that every "Learn more" opens ----------
+     #/treatments shows the Treatments page, #/treatments/<group or treatment> opens it at that entry.
+     A plain #section (#book, #prices …) always belongs to the front page. */
+  var views = { home: $('[data-view="home"]'), treatments: $('[data-view="treatments"]') };
+  var titles = { home: document.title, treatments: 'Treatments | Excellence Medical, Donnybrook, Dublin 4' };
+  var view = 'home';
+  function showView(name) {
+    if (view === name || !views[name]) return false;
+    views[view].hidden = true; views[name].hidden = false; view = name;
+    document.title = titles[name];
+    return true;
+  }
+  function route() {
+    var hash = decodeURIComponent(location.hash.slice(1));
+    closeAll(); setDrawer(false);
+    if (openModal) setModal(openModal, false);
+    if (hash.indexOf('/treatments') === 0) {
+      var changed = showView('treatments');
+      var target = document.getElementById('tr-' + (hash.split('/')[2] || ''));
+      if (!target) return window.scrollTo({ top: 0, behavior: 'instant' });
+      requestAnimationFrame(function () {
+        target.scrollIntoView({ behavior: changed ? 'auto' : behavior, block: 'start' });
+        if (target.classList.contains('tp-card')) { target.classList.remove('is-target'); void target.offsetWidth; target.classList.add('is-target'); }
+      });
+      return;
+    }
+    if (!showView('home')) return; // already on the front page: the browser scrolls to #section itself
+    var el = hash && hash !== '/' && document.getElementById(hash);
+    if (el) requestAnimationFrame(function () { el.scrollIntoView({ block: 'start' }); });
+    else window.scrollTo({ top: 0, behavior: 'instant' });
+  }
+  window.addEventListener('hashchange', route);
+  // a link to the address already showing would not fire hashchange
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#/"]');
+    if (a && a.getAttribute('href') === location.hash && !e.metaKey && !e.ctrlKey) { e.preventDefault(); route(); }
+  });
+
+  /* ---------- Mr Roy's full profile, in a dialog ---------- */
   var QV = JSON.parse(($('#qv-data') || {}).textContent || '{}');
   var qvBody = $('#qvBody');
   var h = function (s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
-  var lc = function (s) { return s.split(' ').map(function (w) { return /^(Silhouette|Soft|PRP|Mr|Roy)$/.test(w) || /^[A-Z]{2,}/.test(w) || w.charAt(0) === '(' ? w : w.toLowerCase(); }).join(' '); };
-  function media(src, pos) { return '<div class="qv-media"><img src="' + src + '" alt="" style="object-position:' + (pos || 'center') + '"></div>'; }
-  function facts(list) { return '<dl class="facts">' + list.map(function (f) { return '<div><dt>' + h(f[0]) + '</dt><dd>' + h(f[1]) + '</dd></div>'; }).join('') + '</dl>'; }
-  function chips(list) { return '<div class="qv-chips">' + list.map(function (k) { return '<a href="#all-treatments" data-qv="t:' + k + '">' + h(QV.t[k].title) + '</a>'; }).join('') + '</div>'; }
-  function ticks(list) { return '<ul class="ticks">' + list.map(function (x) { return '<li>' + QV.icons.check + '<span>' + h(x) + '</span></li>'; }).join('') + '</ul>'; }
-  function actions(service) {
-    return '<div class="actions"><a class="btn btn-primary" href="#book" data-service="' + service + '">Book a consultation</a>' +
-      '<a class="btn btn-outline" href="tel:' + QV.tel + '">' + QV.icons.phone + ' ' + h(QV.phone) + '</a></div>';
-  }
-  function priceTable(rows) { return '<table class="price-table"><tbody>' + rows.map(function (r) { return '<tr><th scope="row">' + h(r[0]) + '</th><td>' + h(r[1]) + '</td></tr>'; }).join('') + '</tbody></table>'; }
-  function preview(key) {
-    var part = key.split(':'), html;
-    if (part[0] === 't' && QV.t[part[1]]) {
-      var t = QV.t[part[1]], c = QV.cats[t.cat];
-      html = media(t.photo || c.photo, t.pos || c.pos) +
-        '<div class="qv-main"><span class="label">' + h(c.title) + '</span><h3 id="qv-title">' + h(t.title) + '</h3><p class="qv-lead">' + h(t.text) + '</p><p>' + h(c.about[0]) + '</p>' +
-        facts(c.facts.map(function (f) { return f[0] === 'Fee' ? ['Fee', t.price] : f; })) + actions(part[1]) + '</div>' +
-        '<div class="qv-foot"><b>More ' + h(lc(c.short)) + ' treatments</b>' + chips(c.items.filter(function (k) { return k !== part[1]; })) +
-        '<a class="text-link" href="#all-treatments" data-qv="c:' + t.cat + '">About ' + h(lc(c.title)) + ' ' + QV.icons.arrow + '</a></div>';
-    } else if (part[0] === 'c' && QV.cats[part[1]]) {
-      var k = QV.cats[part[1]];
-      html = media(k.photo, k.pos) +
-        '<div class="qv-main"><span class="label">Treatment</span><h3 id="qv-title">' + h(k.title) + '</h3><p class="qv-lead">' + h(k.lead) + '</p><p>' + h(k.about[0]) + '</p>' +
-        facts(k.facts) + '<div class="qv-cols"><div><b class="qv-sub">This may suit you if you have</b>' + ticks(k.suitable) + '</div><div><b class="qv-sub">Price guide</b>' + priceTable(k.prices) + '</div></div>' + actions(k.items[0]) + '</div>' +
-        '<div class="qv-foot"><b>Areas we treat</b>' + chips(k.items) + '</div>';
-    } else if (key === 'men') {
-      html = media(QV.men.photo, QV.men.pos) +
-        '<div class="qv-main"><span class="label">Men</span><h3 id="qv-title">' + h(QV.men.title) + '</h3><p class="qv-lead">' + h(QV.men.lead) + '</p>' +
-        facts([['Consultation', QV.consultation], ['Downtime', 'Little or none'], ['Practitioner', 'Mr Roy, every visit']]) + actions('consultation') + '</div>' +
-        '<div class="qv-foot"><b>Popular with men</b>' + chips(QV.men.items) + '</div>';
-    } else if (key === 'roy') {
-      var r = QV.roy;
-      html = media(r.photo, '44% center') +
-        '<div class="qv-main"><span class="label">' + h(r.role) + '</span><h3 id="qv-title">' + h(r.name) + '</h3><p class="qv-lead">' + h(r.quals) + '</p>' + r.about.map(function (p) { return '<p>' + h(p) + '</p>'; }).join('') +
-        '<div class="tags">' + r.focus.map(function (f) { return '<span class="tag">' + h(f) + '</span>'; }).join('') + '</div>' + actions('consultation') + '</div>' +
-        '<div class="qv-foot"><b>Career and training</b><ol class="timeline">' + r.timeline.map(function (x) { return '<li><span class="when">' + h(x[0]) + '</span><div><b>' + h(x[1]) + '</b><span>' + h(x[2]) + '</span></div></li>'; }).join('') + '</ol></div>';
-    } else return false;
-    qvBody.innerHTML = html;
+  function profile() {
+    var r = QV.roy;
+    qvBody.innerHTML = '<div class="qv-media"><img src="' + r.photo + '" alt="" style="object-position:44% center"></div>' +
+      '<div class="qv-main"><span class="label">' + h(r.role) + '</span><h3 id="qv-title">' + h(r.name) + '</h3><p class="qv-lead">' + h(r.quals) + '</p>' +
+      r.about.map(function (p) { return '<p>' + h(p) + '</p>'; }).join('') +
+      '<div class="tags">' + r.focus.map(function (f) { return '<span class="tag">' + h(f) + '</span>'; }).join('') + '</div>' +
+      '<div class="actions"><a class="btn btn-primary" href="#book" data-service="consultation">Book a consultation</a>' +
+      '<a class="btn btn-outline" href="tel:' + QV.tel + '">' + QV.icons.phone + ' ' + h(QV.phone) + '</a></div></div>' +
+      '<div class="qv-foot"><b>Career and training</b><ol class="timeline">' + r.timeline.map(function (x) { return '<li><span class="when">' + h(x[0]) + '</span><div><b>' + h(x[1]) + '</b><span>' + h(x[2]) + '</span></div></li>'; }).join('') + '</ol></div>';
     qvBody.parentElement.scrollTop = 0;
     setModal(qvModal, true);
-    return true;
   }
   document.addEventListener('click', function (e) {
-    var a = e.target.closest && e.target.closest('[data-qv]');
-    if (!a || e.metaKey || e.ctrlKey || e.shiftKey) return;
-    if (preview(a.getAttribute('data-qv'))) { e.preventDefault(); closeAll(); setDrawer(false); }
+    var a = e.target.closest && e.target.closest('[data-qv="roy"]');
+    if (a && qvBody && QV.roy) { e.preventDefault(); profile(); }
   });
-  // "Book a consultation" inside a preview closes it, then the link scrolls to the form
+  // "Book a consultation" inside the profile closes it, then the link scrolls to the form
   if (qvModal) qvModal.addEventListener('click', function (e) {
-    var a = e.target.closest('a[href^="#"]');
-    if (a && !a.hasAttribute('data-qv')) setModal(qvModal, false);
+    if (e.target.closest('a[href^="#"]')) setModal(qvModal, false);
   });
 
   /* ---------- consultation requests ---------- */
@@ -395,4 +401,6 @@
 
   /* ---------- footer year ---------- */
   $$('[data-year]').forEach(function (el) { el.textContent = new Date().getFullYear(); });
+
+  route();
 })();
