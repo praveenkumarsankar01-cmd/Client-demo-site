@@ -133,7 +133,8 @@
   function tourSrc(v) {
     if (tourUrl) return tourUrl;
     var el = $('#tour-data');
-    if (!el) return v.getAttribute('data-src') || '';
+    // hosted page: phones get the lighter cut, as on Origin Dental
+    if (!el) return (window.matchMedia('(max-width: 640px)').matches && v.getAttribute('data-src-phone')) || v.getAttribute('data-src') || '';
     var bin = atob(el.textContent.trim()), bytes = new Uint8Array(bin.length);
     for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
     tourUrl = URL.createObjectURL(new Blob([bytes], { type: 'video/mp4' }));
@@ -360,6 +361,17 @@
     if (e.key !== 'Escape') return;
     closeAll(); setDrawer(false); if (openModal) setModal(openModal, false);
   });
+
+  /* ---------- map ----------
+     Google's map is slow to start on phones, so it begins loading in the background shortly after the page
+     is up (or at once if someone heads for it first), and is ready by the time it scrolls into view. */
+  var mapFrame = $('.map iframe[data-src]');
+  if (mapFrame) {
+    var loadMap = function () { if (!mapFrame.getAttribute('src')) mapFrame.src = mapFrame.getAttribute('data-src'); };
+    var soon = function () { setTimeout(function () { whenIdle(loadMap); }, 800); };
+    if (document.readyState === 'complete') soon(); else window.addEventListener('load', soon);
+    if ('IntersectionObserver' in window) new IntersectionObserver(function (es) { if (es[0].isIntersecting) loadMap(); }, { rootMargin: '1500px 0px' }).observe(mapFrame);
+  }
 
   /* ---------- footer year ---------- */
   $$('[data-year]').forEach(function (el) { el.textContent = new Date().getFullYear(); });

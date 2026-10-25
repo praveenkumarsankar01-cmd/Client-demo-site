@@ -73,6 +73,8 @@ h3 { font-size: 1.05rem; line-height: 1.4; letter-spacing: -.005em; }
 .label { display: block; font-size: .76rem; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--brand); margin-bottom: 10px; }
 .muted { color: var(--text-3); }
 .small { font-size: .86rem; }
+/* a shorter version of a passage, shown on phones instead of the full text */
+.text-short { display: none; }
 
 .skip-link { position: absolute; left: -9999px; top: 8px; z-index: 100; background: var(--text); color: #fff; padding: 10px 16px; border-radius: 6px; }
 .skip-link:focus { left: 8px; color: #fff; }
@@ -465,7 +467,7 @@ fieldset.field { border: 0; margin: 0; padding: 0; }
 /* the map runs edge to edge as a plain rectangle, straight into the footer */
 .map { position: relative; height: clamp(380px, 46vw, 520px); background: var(--tint); border-top: 1px solid var(--line-2); }
 /* shown behind the map until Google's frame paints, so the space never looks empty */
-.map::before { content: "Loading map6"; position: absolute; inset: 0; display: grid; place-items: center; color: var(--text-3); font-weight: 500; font-size: .94rem; }
+.map::before { content: "Loading map…"; position: absolute; inset: 0; display: grid; place-items: center; color: var(--text-3); font-weight: 500; font-size: .94rem; background: repeating-linear-gradient(0deg, transparent 0 39px, rgba(23, 131, 138, .07) 39px 40px), repeating-linear-gradient(90deg, transparent 0 39px, rgba(23, 131, 138, .07) 39px 40px); }
 .map iframe { position: relative; z-index: 1; display: block; width: 100%; height: 100%; border: 0; }
 
 /* ==========================================================================
@@ -618,6 +620,7 @@ a.price-card:hover { color: var(--text-2); border-color: var(--tint-2); transfor
   .vt--big { grid-column: 1 / -1; grid-row: auto; }
   .qv-body { grid-template-columns: 1fr; }
   .qv-media { min-height: 220px; }
+  .leaders-docs { max-width: 560px; }
 }
 @media (max-width: 640px) {
   body { padding-bottom: 74px; font-size: 15px; }
@@ -629,9 +632,31 @@ a.price-card:hover { color: var(--text-2); border-color: var(--tint-2); transfor
   .intro { padding: 44px 0 48px; }
   .statement { font-size: 1.3rem; }
   .figures dd { font-size: 2rem; }
+  /* compact band, as on the Origin Dental phone site: short text, small photos side by side */
+  .text-full { display: none; }
+  .text-short { display: inline; }
+  .leaders { padding: 18px 0 20px; }
+  .leaders-grid { gap: 14px; }
+  .leaders-copy p { font-size: .84rem; line-height: 1.6; }
+  .years { margin-top: 10px; gap: 8px; }
+  .years-ico { width: 36px; }
+  .years b { font-size: 1.55rem; }
+  .years span { margin-top: 2px; font-size: .8rem; }
   .leaders-docs { gap: 10px; }
-  .leader-photo { width: 110px; }
-  .svc-cards { grid-auto-columns: 78%; gap: 12px; }
+  .leader-photo { width: 84px; border-width: 3px; margin-bottom: 6px; }
+  .leader h3 { font-size: .8rem; line-height: 1.25; padding: 0 4px; }
+  .leader-quals { margin-top: 3px; font-size: .46rem; letter-spacing: .08em; line-height: 1.6; }
+
+  /* treatment cards two to a row, title and price only */
+  .svc-cards { grid-auto-columns: calc((100% - 12px) / 2); gap: 12px; }
+  .svc-card-badge { left: 12px; bottom: -22px; width: 44px; height: 44px; border-width: 3px; }
+  .svc-card-badge svg { width: 23px; height: 23px; }
+  .svc-card-body { padding: 30px 12px 12px; }
+  .svc-card h3 { font-size: .92rem; line-height: 1.3; }
+  .svc-card-body p { display: none; }
+  .svc-card-foot { margin-top: 10px; padding-top: 10px; font-size: .8rem; }
+  .svc-card-foot .text-link { display: none; }
+  .urgent { padding: 22px 20px; }
   .finder-panel { padding: 22px 20px; }
   .facts { grid-template-columns: 1fr; }
   .facts div, .facts div + div { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 11px 0; border-left: 0; }
@@ -641,14 +666,18 @@ a.price-card:hover { color: var(--text-2); border-color: var(--tint-2); transfor
   .about-body { margin-top: -40px; padding: 0 10px; }
   .panel { padding: 22px 16px 8px; border-radius: var(--radius); }
   .tech-list li { grid-template-columns: 40px 1fr; }
+  .more-head { align-items: flex-end; }
+  .car-btn { width: 40px; height: 40px; }
   .more-track { grid-auto-columns: 100%; gap: 16px; }
+  .more-ico { width: 88px; height: 88px; }
   .book-form { grid-template-columns: 1fr; }
+  .book-card { border-radius: var(--radius); }
   .rv-carousel { padding: 0 6px; }
   .rv-track { grid-auto-columns: 88%; }
   .rv-arrow { display: none; }
-  .map { height: 340px; }
+  .map { height: 320px; }
   .loc-strip { grid-template-columns: 1fr; }
-  .loc-strip > div, .loc-strip > div:first-child { padding: 16px 0 0; border-left: 0; }
+  .loc-strip > div, .loc-strip > div:first-child, .loc-strip > div + div { padding: 16px 0 0; border-left: 0; }
   .vt-grid, .price-grid { grid-template-columns: 1fr; }
   .qv-main, .qv-foot { padding-left: 22px; padding-right: 22px; }
   .timeline li { grid-template-columns: 1fr; gap: 4px; }

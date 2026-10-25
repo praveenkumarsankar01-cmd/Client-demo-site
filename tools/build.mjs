@@ -77,6 +77,9 @@ function head(css) {
 <link rel="apple-touch-icon" href="${IMG.icon180}">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://images.pexels.com">
+<link rel="preconnect" href="https://www.google.com">
+<link rel="preconnect" href="https://maps.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://maps.googleapis.com" crossorigin>
 <link rel="preload" href="https://fonts.gstatic.com/s/poppins/v24/pxiEyp8kv8JHgFVrJJfecg.woff2" as="font" type="font/woff2" crossorigin>
 <style>
 ${css}
@@ -291,7 +294,7 @@ function findUs() {
     </div>
   </div>
   <div class="map">
-    <iframe src="${MAP}" title="Map showing ${C.name}, ${C.address}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
+    <iframe data-src="${MAP}" title="Map showing ${C.name}, ${C.address}" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
   </div>
 </section>`;
 }
@@ -373,7 +376,7 @@ function home() {
   <div class="wrap leaders-grid">
     <div class="leaders-copy">
       <h2 id="ld-title" class="sr-only">Our medical director and our clinic</h2>
-      <p>${C.name} in ${C.area} is ${esc(C.tagline.replace("Ireland's", 'Ireland’s'))}. Every consultation, treatment and procedure is carried out personally by our medical director, the surgeon ${DR.name}.</p>
+      <p><span class="text-full">${C.name} in ${C.area} is ${esc(C.tagline.replace("Ireland's", 'Ireland’s'))}. Every consultation, treatment and procedure is carried out personally by our medical director, the surgeon ${DR.name}.</span><span class="text-short">Aesthetic and minor surgical treatments in Donnybrook, Dublin 4, all performed by surgeon ${DR.name}.</span></p>
       <div class="years">
         <svg class="years-ico" viewBox="0 0 96 80" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 6C2 24 2 56 14 74M82 6c12 18 12 50 0 68"/><path d="M33 20l30 40M63 20L52 34M44 46L33 60" stroke-width="3.4"/><path d="M68 12L28 68" stroke-width="1.6"/></svg>
         <div><b>20+ years</b><span>of aesthetic medicine with Mr Roy</span></div>
@@ -660,8 +663,8 @@ const js = read('assets/site.js').toString();
 const video = read('assets/media/tour.mp4').toString('base64');
 // index.html (hosted) streams the video from assets/media; the Desktop copy carries it inside, so it works on its own
 const page = embed => (head(css) + chrome() + home() + modals + foot())
-  .replace('id="tourVideo" data-video', `id="tourVideo" data-src="assets/media/tour.mp4" data-video`)
-  .replace(/<video data-video muted/g, '<video data-src="assets/media/tour.mp4" data-video muted') + `
+  .replace('id="tourVideo" data-video', `id="tourVideo" data-src="assets/media/tour.mp4" data-src-phone="assets/media/tour-phone.mp4" data-video`)
+  .replace(/<video data-video muted/g, '<video data-src="assets/media/tour.mp4" data-src-phone="assets/media/tour-phone.mp4" data-video muted') + `
 <script type="application/json" id="qv-data">${JSON.stringify(QV).replace(/</g, '\\u003c')}</script>${embed ? `
 <script type="application/octet-stream" id="tour-data">${video}</script>` : ''}
 <script>
