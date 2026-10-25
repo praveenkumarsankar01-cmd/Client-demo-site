@@ -1,7 +1,7 @@
 /* ==========================================================================
    Excellence Medical — site behaviour
-   No dependencies. Two pages in one file: the front page, and the Treatments page that every
-   "Learn more" and menu link opens at its treatment (#/treatments/<slug>). Mr Roy's profile opens in a dialog.
+   No dependencies. One front page: menu links scroll to its sections, treatment links are placeholders
+   for the demo (data-dummy), and Mr Roy's profile opens in a dialog.
    ========================================================================== */
 (function () {
   'use strict';
@@ -64,7 +64,7 @@
   // following a link inside a menu closes the menu; placeholder links (data-dummy) go nowhere
   document.addEventListener('click', function (e) {
     if (!e.target.closest) return;
-    if (e.target.closest('[data-dummy]')) { e.preventDefault(); return; }
+    if (e.target.closest('[data-dummy]')) { e.preventDefault(); closeAll(); setDrawer(false); return; }
     if (e.target.closest('.dd a')) closeAll();
     if (e.target.closest('#drawer a')) setDrawer(false);
   });
@@ -236,44 +236,6 @@
   var bookModal = $('#bookModal'), enquiryModal = $('#enquiryModal'), qvModal = $('#qvModal');
   $$('[data-enquiry]').forEach(function (b) { b.addEventListener('click', function () { setModal(enquiryModal, true); }); });
 
-  /* ---------- pages: the front page, and the Treatments page that every "Learn more" opens ----------
-     #/treatments shows the Treatments page, #/treatments/<group or treatment> opens it at that entry.
-     A plain #section (#book, #prices …) always belongs to the front page. */
-  var views = { home: $('[data-view="home"]'), treatments: $('[data-view="treatments"]') };
-  var titles = { home: document.title, treatments: 'Treatments | Excellence Medical, Donnybrook, Dublin 4' };
-  var view = 'home';
-  function showView(name) {
-    if (view === name || !views[name]) return false;
-    views[view].hidden = true; views[name].hidden = false; view = name;
-    document.title = titles[name];
-    return true;
-  }
-  function route() {
-    var hash = decodeURIComponent(location.hash.slice(1));
-    closeAll(); setDrawer(false);
-    if (openModal) setModal(openModal, false);
-    if (hash.indexOf('/treatments') === 0) {
-      var changed = showView('treatments');
-      var target = document.getElementById('tr-' + (hash.split('/')[2] || ''));
-      if (!target) return window.scrollTo({ top: 0, behavior: 'instant' });
-      requestAnimationFrame(function () {
-        target.scrollIntoView({ behavior: changed ? 'auto' : behavior, block: 'start' });
-        if (target.classList.contains('tp-card')) { target.classList.remove('is-target'); void target.offsetWidth; target.classList.add('is-target'); }
-      });
-      return;
-    }
-    if (!showView('home')) return; // already on the front page: the browser scrolls to #section itself
-    var el = hash && hash !== '/' && document.getElementById(hash);
-    if (el) requestAnimationFrame(function () { el.scrollIntoView({ block: 'start' }); });
-    else window.scrollTo({ top: 0, behavior: 'instant' });
-  }
-  window.addEventListener('hashchange', route);
-  // a link to the address already showing would not fire hashchange
-  document.addEventListener('click', function (e) {
-    var a = e.target.closest && e.target.closest('a[href^="#/"]');
-    if (a && a.getAttribute('href') === location.hash && !e.metaKey && !e.ctrlKey) { e.preventDefault(); route(); }
-  });
-
   /* ---------- Mr Roy's full profile, in a dialog ---------- */
   var QV = JSON.parse(($('#qv-data') || {}).textContent || '{}');
   var qvBody = $('#qvBody');
@@ -401,6 +363,4 @@
 
   /* ---------- footer year ---------- */
   $$('[data-year]').forEach(function (el) { el.textContent = new Date().getFullYear(); });
-
-  route();
 })();

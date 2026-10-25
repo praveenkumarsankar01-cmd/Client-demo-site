@@ -33,9 +33,9 @@ const ic = (n, extra = '') => `<i class="ic ic-${n}${extra ? ' ' + extra : ''}" 
 const stars = n => `<span class="stars" aria-label="${n} out of 5 stars">${ic('star').repeat(n)}</span>`;
 
 /* ---------- links and small builders ----------
-   Treatment links open the Treatments page (a second page in the same file) at that treatment or group. */
-const tLink = k => `href="#/treatments/${k}"`;
-const cLink = c => `href="#/treatments/${c}"`;
+   Treatment links are placeholders for the demo (data-dummy: they go nowhere); treatment pages come after approval. */
+const tLink = k => `href="#" data-dummy data-treatment="${k}"`;
+const cLink = c => `href="#" data-dummy data-treatment="${c}"`;
 const bookFor = k => `href="#book" data-service="${k}"`;
 const catOf = k => CAT[T[k].cat];
 const priceOf = k => T[k].price || catOf(k).price || catOf(k).priceText;
@@ -95,7 +95,7 @@ function megaPanel(id, cols) {
               ${cols.map(col => `<div class="mega-col">${col.map(g => `<div class="mega-group"><a class="mega-head" ${cLink(g.cat)}><span class="mega-ico">${iconSvg(CAT[g.cat].icon)}</span>${esc(g.label)}</a><ul>${g.items.map(it => `<li>${itemLink(it)}</li>`).join('')}</ul></div>`).join('')}</div>`).join('\n              ')}
             </div>
             <div class="mega-foot">
-              <a class="text-link" href="#/treatments">View all treatments ${ic('arrow-right')}</a>
+              <a class="text-link" href="#treatments">View all treatments ${ic('arrow-right')}</a>
               <span>Not sure which treatment is right for you? Start with a consultation (${C.consultation}).</span>
               <a class="btn btn-primary btn-sm" ${bookFor('consultation')}>Book a consultation</a>
             </div>
@@ -166,8 +166,8 @@ function chrome() {
       <button class="menu-toggle drawer-close" type="button" data-drawer-close aria-label="Close menu" style="display:grid">${ic('xmark')}</button>
     </div>
     <details><summary>About ${ic('chevron-down', 'chev')}</summary><a href="#about">About ${C.name}</a><a href="#surgeon">About Mr Shunil Roy</a><a href="#stories">Video testimonials</a><a href="#prices">Price guide</a></details>
-    <details><summary>Select Treatment ${ic('chevron-down', 'chev')}</summary>${drawerGroups(menuWomen)}<a class="drawer-all" href="#/treatments">View all treatments</a></details>
-    <details><summary>Men ${ic('chevron-down', 'chev')}</summary><a href="#/treatments/men"><b>Treatments for men</b></a>${drawerGroups(menuMen)}</details>
+    <details><summary>Select Treatment ${ic('chevron-down', 'chev')}</summary>${drawerGroups(menuWomen)}<a class="drawer-all" href="#treatments">View all treatments</a></details>
+    <details><summary>Men ${ic('chevron-down', 'chev')}</summary><a href="#" data-dummy><b>Treatments for men</b></a>${drawerGroups(menuMen)}</details>
     <a class="drawer-link" href="#prices">Price guide</a>
     <a class="drawer-link" href="#clinic">Clinic tour</a>
     <a class="drawer-link" href="#find">Contact</a>
@@ -187,7 +187,7 @@ function foot() {
         <p>${esc(C.tagline)}.</p>
         <span class="footer-social">${social()}</span>
       </div>
-      <div><h4>Treatments</h4><ul>${catOrder.map(c => `<li><a ${cLink(c)}>${esc(CAT[c].title)}</a></li>`).join('')}<li><a href="#/treatments/men">Treatments for men</a></li><li><a href="#/treatments"><b>View all treatments</b></a></li></ul></div>
+      <div><h4>Treatments</h4><ul>${catOrder.map(c => `<li><a ${cLink(c)}>${esc(CAT[c].title)}</a></li>`).join('')}<li><a href="#" data-dummy>Treatments for men</a></li><li><a href="#treatments"><b>View all treatments</b></a></li></ul></div>
       <div><h4>The clinic</h4><ul><li><a href="#about">About ${C.name}</a></li><li><a href="#surgeon">About Mr Shunil Roy</a></li><li><a href="#clinic">Why come to us</a></li><li><a href="#stories">Video testimonials</a></li><li><a href="#prices">Price guide</a></li><li><a href="#clinic">Clinic tour</a></li></ul></div>
       <div><h4>Contact</h4><ul>
         <li>${C.address}</li>
@@ -219,7 +219,7 @@ function moreTreatments() {
   ].map(([kind, k, icon]) => {
     if (kind === 'c') return [cLink(k), CAT[k].title, CAT[k].card, icon];
     if (kind === 't') return [tLink(k), T[k].title, firstSentence(T[k].text), icon];
-    if (kind === 'men') return ['href="#/treatments/men"', 'Treatments for Men', 'Anti-wrinkle, jawline, hair loss and sweating treatments for men.', icon];
+    if (kind === 'men') return ['href="#" data-dummy', 'Treatments for Men', 'Anti-wrinkle, jawline, hair loss and sweating treatments for men.', icon];
     return [bookFor('consultation'), 'Consultation', `A ${C.consultation} consultation with Mr Roy, with an accurate written price.`, icon];
   });
   return `
@@ -362,7 +362,6 @@ function home() {
 
   return `
 <main id="main">
-<div data-view="home">
 
 <!-- top of the page, as on Origin Dental: the clinic tour edge to edge, with nothing over it -->
 <section class="hero-video" id="tour" aria-labelledby="hero-title">
@@ -420,7 +419,7 @@ function home() {
   <div class="wrap">
     <div class="head-split">
       <div><span class="label">Treatments</span><h2 id="tr-title">Non-surgical, minimally invasive and minor surgical treatments</h2></div>
-      <div><p>From a single anti-wrinkle area to a Silhouette Soft lift, each treatment is planned around your face and priced in writing after your consultation.</p><div class="svc-nav"><a class="text-link" href="#/treatments">View all treatments ${ic('arrow-right')}</a><span class="car-nav"><button class="car-btn car-btn--light" type="button" data-car-prev aria-label="Previous treatments">${ic('chevron-left')}</button><button class="car-btn car-btn--light" type="button" data-car-next aria-label="Next treatments">${ic('chevron-right')}</button></span></div></div>
+      <div><p>From a single anti-wrinkle area to a Silhouette Soft lift, each treatment is planned around your face and priced in writing after your consultation.</p><div class="svc-nav"><a class="text-link" href="#treatments">View all treatments ${ic('arrow-right')}</a><span class="car-nav"><button class="car-btn car-btn--light" type="button" data-car-prev aria-label="Previous treatments">${ic('chevron-left')}</button><button class="car-btn car-btn--light" type="button" data-car-next aria-label="Next treatments">${ic('chevron-right')}</button></span></div></div>
     </div>
     <div class="car-track svc-cards" data-carousel tabindex="0" role="region" aria-label="Treatments">
       ${cards.map(card).join('\n      ')}
@@ -605,87 +604,7 @@ ${moreTreatments()}
 ${reviewsBand()}
 ${findUs()}
 
-</div>
-${treatmentsPage()}
 </main>`;
-}
-
-/* ==========================================================================
-   The Treatments page: every "Learn more" and menu link opens this one page at its treatment
-   ========================================================================== */
-function treatmentsPage() {
-  const intro = ({ id, label, title, lead, about = [], facts, suitable, prices, photoHtml, icon, service }) => `
-    <div class="tp-intro">
-      <div class="tp-photo">${photoHtml}<span class="svc-card-badge">${iconSvg(icon)}</span></div>
-      <div class="tp-copy">
-        <span class="label">${esc(label)}</span>
-        <h2 id="${id}-title">${esc(title)}</h2>
-        <p class="tp-lead">${esc(lead)}</p>
-        ${about.map(p => `<p>${esc(p)}</p>`).join('\n        ')}
-        <dl class="facts">${facts.map(([a, b]) => `<div><dt>${esc(a)}</dt><dd>${esc(b)}</dd></div>`).join('')}</dl>
-        ${suitable ? `<div class="tp-cols">
-          <div><b class="qv-sub">This may suit you if you have</b><ul class="ticks">${suitable.map(x => `<li>${ic('check')}<span>${esc(x)}</span></li>`).join('')}</ul></div>
-          <div><b class="qv-sub">Price guide</b><table class="price-table"><tbody>${prices.map(([x, y]) => `<tr><th scope="row">${esc(x)}</th><td>${esc(y)}</td></tr>`).join('')}</tbody></table></div>
-        </div>` : ''}
-        <div class="actions">
-          <a class="btn btn-primary" ${bookFor(service)}>Book a consultation</a>
-          <a class="btn btn-outline" href="tel:${C.tel}">${ic('phone')} ${C.phone}</a>
-        </div>
-      </div>
-    </div>`;
-  const card = k => `<article class="tp-card" id="tr-${k}">
-          <h4>${esc(T[k].title)}</h4>
-          <p>${esc(T[k].text)}</p>
-          <div class="tp-card-foot"><span>${priceHtml(priceOf(k))}</span><a class="text-link" ${bookFor(k)}>Book ${ic('arrow-right')}</a></div>
-        </article>`;
-  const category = (c, i) => {
-    const k = CAT[c], items = inCat(c);
-    return `
-<section class="section tp-cat${i % 2 ? ' section--soft' : ''}" id="tr-${c}" aria-labelledby="tr-${c}-title">
-  <div class="wrap">${intro({ id: `tr-${c}`, label: k.short, title: k.title, lead: k.lead, about: k.about, facts: k.facts, suitable: k.suitable, prices: k.prices, photoHtml: photo(k.photo, 900, k.title, { pos: k.pos }), icon: k.icon, service: items[0] })}
-    <div class="tp-areas-head"><h3>Areas we treat</h3><span>${items.length} treatments</span></div>
-    <div class="tp-grid">
-        ${items.map(card).join('\n        ')}
-    </div>
-    <div class="tp-more">
-      <div><h3>How treatment works</h3><ol class="steps">${k.steps.map(([x, y]) => `<li><h4>${esc(x)}</h4><p>${esc(y)}</p></li>`).join('')}</ol></div>
-      <div><h3>Questions</h3>${faqList(k.faq)}</div>
-    </div>
-  </div>
-</section>`;
-  };
-  const men = `
-<section class="section tp-cat${catOrder.length % 2 ? ' section--soft' : ''}" id="tr-men" aria-labelledby="tr-men-title">
-  <div class="wrap">${intro({ id: 'tr-men', label: 'Men', title: 'Treatments for men', lead: 'More men than ever come to us for discreet treatments: softening frown lines, defining the jaw, treating hair loss and excessive sweating, and removing moles and cysts. Plans are built around a masculine face, so results look like you on a good day.', facts: [['Consultation', C.consultation], ['Downtime', 'Little or none'], ['Practitioner', 'Mr Roy, every visit']], photoHtml: photo(38167607, 900, 'A man receiving an anti-wrinkle treatment', { pos: 'center 30%' }), icon: 'man', service: 'consultation' })}
-    <div class="tp-areas-head"><h3>Popular with men</h3><span>${menPopular.length} treatments</span></div>
-    <div class="tp-grid">
-        ${menPopular.map(k => `<a class="tp-card tp-card--link" ${tLink(k)}><h4>${esc(T[k].title)}</h4><p>${esc(firstSentence(T[k].text))}</p><div class="tp-card-foot"><span>${priceHtml(priceOf(k))}</span><span class="text-link">Read more ${ic('arrow-right')}</span></div></a>`).join('\n        ')}
-    </div>
-  </div>
-</section>`;
-  return `
-<div data-view="treatments" hidden>
-<section class="tp-head" aria-labelledby="tp-title">
-  <div class="wrap">
-    <nav class="crumbs" aria-label="Breadcrumb"><a href="#/">Home</a>${ic('chevron-right')}<span>Treatments</span></nav>
-    <span class="label">Treatments</span>
-    <h1 id="tp-title">All treatments</h1>
-    <p class="lead">${Object.keys(T).length} treatments and procedures in seven groups, from a single anti-wrinkle area to a Silhouette Soft lift. Every one is performed by Mr Roy and priced in writing after your consultation.</p>
-    <a class="text-link tp-back" href="#/">${ic('chevron-left')} Back to the home page</a>
-  </div>
-</section>
-<nav class="tp-jump" aria-label="Treatment groups"><div class="wrap">${catOrder.map(c => `<a ${cLink(c)}>${esc(CAT[c].short)}</a>`).join('')}<a href="#/treatments/men">Men</a></div></nav>
-${catOrder.map(category).join('')}
-${men}
-<section class="section" aria-label="Book a consultation">
-  <div class="wrap">
-    <div class="tp-cta">
-      <div><h2>Not sure which treatment you need?</h2><p>Book a consultation and Mr Roy will examine you, explain your options and give you an accurate price. Consultations are ${C.consultation}.</p></div>
-      <div class="actions"><a class="btn btn-primary" ${bookFor('consultation')}>Book a consultation</a><a class="btn btn-outline" href="tel:${C.tel}">${ic('phone')} ${C.phone}</a></div>
-    </div>
-  </div>
-</section>
-</div>`;
 }
 
 /* ---------- Mr Roy's profile, shown in a dialog ---------- */
