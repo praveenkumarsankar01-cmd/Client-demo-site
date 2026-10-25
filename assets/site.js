@@ -125,20 +125,19 @@
     show(tabs.filter(function (t) { return t.getAttribute('aria-selected') === 'true'; })[0] || tabs[0], false, false);
   });
 
-  /* ---------- the clinic tour video ----------
-     The Desktop copy carries the clip inside the file (base64), turned into a playable blob once the page has
-     loaded; the hosted page streams it from data-src. It plays muted while on screen; with reduced motion or
-     Data Saver it waits for the play button. */
-  var tourUrl = null;
-  function tourSrc(v) {
-    if (tourUrl) return tourUrl;
-    var el = $('#tour-data');
+  /* ---------- videos (the clinic tour, the treatment clip) ----------
+     The Desktop copy carries each clip inside the file (base64, in the script named by data-embed), turned into a
+     playable blob when needed; the hosted page streams it from data-src. They play muted while on screen; with
+     reduced motion or Data Saver they wait for the play button. */
+  var blobs = {};
+  function videoSrc(v) {
+    var id = v.getAttribute('data-embed'), el = id && document.getElementById(id);
     // hosted page: phones get the lighter cut, as on Origin Dental
     if (!el) return (window.matchMedia('(max-width: 640px)').matches && v.getAttribute('data-src-phone')) || v.getAttribute('data-src') || '';
+    if (blobs[id]) return blobs[id];
     var bin = atob(el.textContent.trim()), bytes = new Uint8Array(bin.length);
     for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    tourUrl = URL.createObjectURL(new Blob([bytes], { type: 'video/mp4' }));
-    return tourUrl;
+    return (blobs[id] = URL.createObjectURL(new Blob([bytes], { type: 'video/mp4' })));
   }
   var conn = navigator.connection || {};
   var lowData = conn.saveData || /2g/.test(conn.effectiveType || '');
@@ -152,7 +151,7 @@
     var pauseIcon = btn && btn.querySelector('.ic-pause');
     var loaded = false, userPaused = false, inView = false, ready = !v.hasAttribute('data-after-load');
     var auto = !reduceMotion && !lowData;
-    var load = function () { if (!loaded) { loaded = true; v.src = tourSrc(v); } };
+    var load = function () { if (!loaded) { loaded = true; v.src = videoSrc(v); } };
     var play = function () { load(); v.play().catch(function () {}); };
     var sync = function () {
       if (!btn) return;

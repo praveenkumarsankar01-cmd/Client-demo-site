@@ -21,6 +21,7 @@ const IMG = {
   icon64: data('assets/img/icon-64.png', 'image/png'),
   icon180: data('assets/img/icon-180.png', 'image/png'),
   poster: data('assets/media/tour-poster.webp', 'image/webp'),
+  clinicPoster: data('assets/media/clinic-poster.webp', 'image/webp'),
   portrait: data('assets/img/about-portrait.webp', 'image/webp') // Pexels portrait, chosen by the client
 };
 const S = Object.fromEntries(['exterior', 'reception', 'room-fireplace', 'rcs-certificate', 'roy-desk', 'lounge', 'room-window']
@@ -495,8 +496,9 @@ function home() {
     <div class="panel tech">
       <div class="tech-media">
         <div class="video-wrap">
-          <video data-video muted loop playsinline preload="none" poster="${IMG.poster}" aria-label="Clinic tour: the house, reception, treatment rooms and Mr Roy's consulting room"></video>
-          <button class="video-btn" type="button">${ic('play')}${ic('pause').replace('aria-hidden="true"', 'aria-hidden="true" hidden')}<span data-label>Play the clinic tour</span></button>
+          <!-- anti-wrinkle treatment clip: Pexels 7581709, free licence, chosen by the client -->
+          <video data-src="assets/media/clinic.mp4" data-src-phone="assets/media/clinic-phone.mp4" data-embed="clinic-data" data-video muted loop playsinline preload="none" poster="${IMG.clinicPoster}" aria-label="A precise anti-wrinkle injection beside the eye, with the patient relaxed"></video>
+          <button class="video-btn" type="button">${ic('play')}${ic('pause').replace('aria-hidden="true"', 'aria-hidden="true" hidden')}<span data-label>Play the clip</span></button>
         </div>
         <div class="tech-stills">
           ${still('reception', 'Reception', 'Reception')}
@@ -662,12 +664,13 @@ const modals = `
 const css = read('assets/site.css').toString();
 const js = read('assets/site.js').toString();
 const video = read('assets/media/tour.mp4').toString('base64');
-// index.html (hosted) streams the video from assets/media; the Desktop copy carries it inside, so it works on its own
+const clinicVideo = read('assets/media/clinic.mp4').toString('base64');
+// index.html (hosted) streams the videos from assets/media; the Desktop copy carries them inside, so it works on its own
 const page = embed => (head(css) + chrome() + home() + modals + foot())
-  .replace('id="tourVideo" data-video', `id="tourVideo" data-src="assets/media/tour.mp4" data-src-phone="assets/media/tour-phone.mp4" data-video`)
-  .replace(/<video data-video muted/g, '<video data-src="assets/media/tour.mp4" data-src-phone="assets/media/tour-phone.mp4" data-video muted') + `
+  .replace('id="tourVideo" data-video', `id="tourVideo" data-src="assets/media/tour.mp4" data-src-phone="assets/media/tour-phone.mp4" data-embed="tour-data" data-video`) + `
 <script type="application/json" id="qv-data">${JSON.stringify(QV).replace(/</g, '\\u003c')}</script>${embed ? `
-<script type="application/octet-stream" id="tour-data">${video}</script>` : ''}
+<script type="application/octet-stream" id="tour-data">${video}</script>
+<script type="application/octet-stream" id="clinic-data">${clinicVideo}</script>` : ''}
 <script>
 ${js}
 </script>
