@@ -365,33 +365,9 @@ function home() {
 <div data-view="home">
 
 <!-- top of the page, as on Origin Dental: the clinic tour edge to edge, with nothing over it -->
-<section class="hero-video" id="tour" aria-label="Clinic tour">
+<section class="hero-video" id="tour" aria-labelledby="hero-title">
+  <h1 id="hero-title" class="sr-only">${C.name}, ${C.area}: natural-looking aesthetic treatments and private minor surgery, performed personally by ${DR.name}, FRCS (Edinburgh)</h1>
   <video id="tourVideo" data-video data-after-load muted loop playsinline preload="none" poster="${IMG.poster}" aria-label="A walk through ${C.name}: the house on Morehampton Road, reception, treatment rooms and Mr Roy's consulting room"></video>
-</section>
-
-<section class="hero" aria-labelledby="hero-title">
-  <div class="wrap hero-grid">
-    <div>
-      <span class="hero-label">${C.name} · ${C.area}</span>
-      <h1 id="hero-title">Natural-looking results, in a surgeon's hands</h1>
-    </div>
-    <div>
-      <p class="hero-lead">Anti-wrinkle treatments, dermal fillers, Silhouette Soft lifts, PRP and private minor surgery. Every treatment is performed personally by ${DR.name}, FRCS (Edinburgh).</p>
-      <div class="actions">
-        <a class="btn btn-primary" ${bookFor('consultation')}>Book a consultation</a>
-        <a class="btn btn-ghost" href="#treatments">Explore treatments ${ic('arrow-right')}</a>
-      </div>
-    </div>
-  </div>
-  <div class="hero-strip">
-    <div class="wrap">
-      <span><b>FRCS (Edinburgh)</b>Surgical fellowship, 1997</span>
-      <span><b>20+ years</b>in aesthetic medicine</span>
-      <span><b>Silhouette Soft</b>Pioneered in Ireland, 2012</span>
-      <span><b>No waiting list</b>for minor surgery</span>
-      <button class="video-btn" type="button" data-controls="tourVideo">${ic('play')}${ic('pause').replace('aria-hidden="true"', 'aria-hidden="true" hidden')}<span data-label>Play the clinic tour</span></button>
-    </div>
-  </div>
 </section>
 
 <section class="leaders" aria-labelledby="ld-title">
