@@ -292,8 +292,9 @@ h3 { font-size: 1.05rem; line-height: 1.4; letter-spacing: -.005em; }
 
 
 /* ---------- about: wide photo with an overlapping card ---------- */
-.about-photo { aspect-ratio: 21 / 9; border-radius: var(--radius-lg); overflow: hidden; background: var(--tint); }
-.about-photo img { width: 100%; height: 100%; object-fit: cover; }
+/* a tall portrait on the right, on its own grey backdrop; the card sits over the plain left side */
+.about-photo { position: relative; aspect-ratio: 21 / 9; border-radius: var(--radius-lg); overflow: hidden; background: linear-gradient(100deg, #a0aaac 0%, #aab4b6 55%, #b6c0c2 100%); }
+.about-photo img { position: absolute; top: 0; right: 4%; width: 46%; height: 100%; object-fit: cover; object-position: center 28%; -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 22%, #000 82%, transparent 100%); mask-image: linear-gradient(90deg, transparent 0%, #000 22%, #000 82%, transparent 100%); }
 .about-body { position: relative; display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, .7fr); gap: 32px 56px; margin-top: -132px; padding: 0 clamp(0px, 3vw, 40px); }
 .about-card { background: #fff; border-radius: var(--radius-lg); padding: clamp(26px, 4vw, 48px); box-shadow: 0 34px 70px -44px rgba(20, 32, 36, .45); }
 .about-card > p { margin: 16px 0 0; font-size: 1.01rem; }
@@ -605,6 +606,7 @@ a.price-card:hover { color: var(--text-2); border-color: var(--tint-2); transfor
   .ft-pic { width: 42px; height: 42px; border-radius: 10px; }
   .finder-tabs button[aria-selected="true"] { border-color: var(--brand); background: var(--brand-tint); color: var(--brand-dark); }
   .about-photo { aspect-ratio: 16 / 9; }
+  .about-photo img { right: 0; width: 62%; }
   .about-body { grid-template-columns: 1fr; margin-top: -64px; padding: 0 16px; }
   .about-side { padding-top: 0; }
   .faq-side { position: static; }
@@ -663,6 +665,7 @@ a.price-card:hover { color: var(--text-2); border-color: var(--tint-2); transfor
   .facts div + div { border-top: 1px solid var(--line); }
   .facts dd { margin: 0; text-align: right; }
   .about-photo { aspect-ratio: 4 / 3; border-radius: var(--radius); }
+  .about-photo img { right: 0; width: 100%; object-position: center 30%; -webkit-mask-image: none; mask-image: none; }
   .about-body { margin-top: -40px; padding: 0 10px; }
   .panel { padding: 22px 16px 8px; border-radius: var(--radius); }
   .tech-list li { grid-template-columns: 40px 1fr; }

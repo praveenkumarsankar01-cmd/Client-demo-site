@@ -20,7 +20,8 @@ const IMG = {
   logo: data('assets/img/logo.png', 'image/png'),
   icon64: data('assets/img/icon-64.png', 'image/png'),
   icon180: data('assets/img/icon-180.png', 'image/png'),
-  poster: data('assets/media/tour-poster.webp', 'image/webp')
+  poster: data('assets/media/tour-poster.webp', 'image/webp'),
+  portrait: data('assets/img/about-portrait.webp', 'image/webp') // Pexels portrait, chosen by the client
 };
 const S = Object.fromEntries(['exterior', 'reception', 'room-fireplace', 'rcs-certificate', 'roy-desk', 'lounge', 'room-window']
   .map(name => [name, data(`assets/img/clinic-${name}.webp`, 'image/webp')]));
@@ -465,7 +466,7 @@ function home() {
 
 <section class="section" id="about" aria-labelledby="ab-title">
   <div class="wrap">
-    <div class="about-photo">${photo(29648624, 1800, 'A patient relaxing during a facial treatment', { pos: 'center 72%' })}</div>
+    <div class="about-photo"><img src="${IMG.portrait}" alt="A woman with smooth, natural-looking skin" loading="lazy" decoding="async"></div>
     <div class="about-body">
       <div class="about-card">
         <span class="label">Our commitment</span>
