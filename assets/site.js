@@ -1,18 +1,15 @@
 /* ==========================================================================
-   Excellence Medical — site behaviour
-   No dependencies. One front page: menu links scroll to its sections, treatment links are placeholders
-   for the demo (data-dummy), and Mr Roy's profile opens in a dialog.
+   Origin Dental — site behaviour
+   No dependencies. Everything degrades to plain links/forms without JS.
    ========================================================================== */
 (function () {
   'use strict';
 
-  var CLINIC_EMAIL = 'info@excellencemedical.ie';
-  var TZ = 'Europe/Dublin';
-  // 0 = Sunday … 6 = Saturday; hours in 24h decimal, null = closed
-  var HOURS = { 0: null, 1: [10.5, 16.5], 2: [10.5, 16.5], 3: [10.5, 16.5], 4: [10.5, 16.5], 5: [10.5, 16.5], 6: null };
-  var DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  var WA_NUMBER = '447700900461';
+  var TZ = 'Asia/Kolkata';
+  // 0 = Sunday … 6 = Saturday; hours in 24h decimal
+  var HOURS = { 0: [9, 13], 1: [8, 21], 2: [8, 21], 3: [8, 21], 4: [8, 21], 5: [8, 21], 6: [8, 21] };
   var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  var behavior = reduceMotion ? 'auto' : 'smooth';
   var $ = function (s, r) { return (r || document).querySelector(s); };
   var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
 
@@ -24,25 +21,55 @@
     onScroll();
   }
 
-  /* ---------- drop-downs and mega menus ---------- */
+  /* ---------- desktop drop-downs (two levels: Services > Teeth Replacement > …) ---------- */
   var canHover = window.matchMedia('(hover: hover)').matches;
   var toggles = $$('[data-dropdown]');
+  var subToggles = $$('.dd-parent');
   function setMenu(btn, open) {
     btn.setAttribute('aria-expanded', open ? 'true' : 'false');
     var m = document.getElementById(btn.getAttribute('aria-controls'));
     if (m) m.classList.toggle('is-open', open);
+    if (btn.classList.contains('dd-parent')) btn.parentElement.classList.toggle('is-open', open);
+    if (!open && m) $$('.dd-parent', m).forEach(function (s) { setMenu(s, false); });
   }
   function closeAll(except) { toggles.forEach(function (b) { if (b !== except) setMenu(b, false); }); }
+  function hoverable(li, btn, siblings) {
+    if (!canHover) return;
+    var t;
+    li.addEventListener('mouseenter', function () {
+      clearTimeout(t);
+      siblings.forEach(function (b) { if (b !== btn) setMenu(b, false); });
+      setMenu(btn, true);
+    });
+    li.addEventListener('mouseleave', function () { t = setTimeout(function () { setMenu(btn, false); }, 180); });
+  }
   toggles.forEach(function (btn) {
     btn.addEventListener('click', function (e) {
       e.stopPropagation();
       var open = btn.getAttribute('aria-expanded') !== 'true';
       closeAll(btn); setMenu(btn, open);
     });
-    if (!canHover) return;
-    var li = btn.parentElement, t;
-    li.addEventListener('mouseenter', function () { clearTimeout(t); closeAll(btn); setMenu(btn, true); });
-    li.addEventListener('mouseleave', function () { t = setTimeout(function () { setMenu(btn, false); }, 160); });
+    hoverable(btn.parentElement, btn, toggles);
+  });
+  subToggles.forEach(function (btn) {
+    var siblings = $$('.dd-parent', btn.closest('.dd'));
+    btn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var open = btn.getAttribute('aria-expanded') !== 'true';
+      siblings.forEach(function (b) { if (b !== btn) setMenu(b, false); });
+      setMenu(btn, open);
+      if (open) { var first = $('a', document.getElementById(btn.getAttribute('aria-controls'))); if (first && e.detail === 0) first.focus(); }
+    });
+    btn.addEventListener('keydown', function (e) { if (e.key === 'ArrowRight') { e.preventDefault(); btn.click(); } });
+    hoverable(btn.parentElement, btn, siblings);
+  });
+  // close a sub-menu with ArrowLeft, returning focus to its parent item
+  $$('.dd--sub').forEach(function (sub) {
+    sub.addEventListener('keydown', function (e) {
+      if (e.key !== 'ArrowLeft') return;
+      var p = sub.parentElement.querySelector('.dd-parent');
+      e.preventDefault(); setMenu(p, false); p.focus();
+    });
   });
   document.addEventListener('click', function (e) { if (!e.target.closest('.nav-links')) closeAll(); });
   document.addEventListener('focusin', function (e) { if (!e.target.closest('.nav-links')) closeAll(); });
@@ -56,20 +83,13 @@
     drawer.setAttribute('aria-hidden', open ? 'false' : 'true');
     if (opener) opener.setAttribute('aria-expanded', open ? 'true' : 'false');
     document.body.style.overflow = open ? 'hidden' : '';
-    if (open) { var f = $('.drawer-close', drawer); if (f) f.focus(); }
+    if (open) { var f = $('.drawer-close', drawer); if (f) f.focus(); } else if (opener) opener.focus();
   }
   if (opener) opener.addEventListener('click', function () { setDrawer(true); });
   $$('[data-drawer-close]').forEach(function (el) { el.addEventListener('click', function () { setDrawer(false); }); });
+  $$('#drawer a').forEach(function (a) { a.addEventListener('click', function () { setDrawer(false); }); });
 
-  // following a link inside a menu closes the menu; placeholder links (data-dummy) go nowhere
-  document.addEventListener('click', function (e) {
-    if (!e.target.closest) return;
-    if (e.target.closest('[data-dummy]')) { e.preventDefault(); closeAll(); setDrawer(false); return; }
-    if (e.target.closest('.dd a')) closeAll();
-    if (e.target.closest('#drawer a')) setDrawer(false);
-  });
-
-  /* ---------- open now (clinic time in Dublin, not visitor time) ---------- */
+  /* ---------- open now (clinic time, not visitor time) ---------- */
   function clinicNow() {
     var parts = new Intl.DateTimeFormat('en-GB', { timeZone: TZ, weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date());
     var get = function (t) { return (parts.filter(function (p) { return p.type === t; })[0] || {}).value; };
@@ -78,23 +98,22 @@
   }
   function fmt(h) {
     var hh = Math.floor(h), mm = Math.round((h - hh) * 60), ap = hh >= 12 ? 'PM' : 'AM';
-    return (hh % 12 || 12) + (mm ? ':' + String(mm).padStart(2, '0') : '') + ' ' + ap;
+    var h12 = hh % 12 || 12;
+    return h12 + (mm ? ':' + String(mm).padStart(2, '0') : '') + ' ' + ap;
   }
   function openStatus() {
-    var now = clinicNow(), h = HOURS[now.day];
-    if (h && now.t >= h[0] && now.t < h[1]) return { open: true, text: 'Open now · until ' + fmt(h[1]) };
-    if (h && now.t < h[0]) return { open: false, text: 'Closed · opens ' + fmt(h[0]) + ' today' };
-    for (var i = 1; i <= 7; i++) {
-      var d = (now.day + i) % 7;
-      if (HOURS[d]) return { open: false, text: 'Closed · opens ' + fmt(HOURS[d][0]) + (i === 1 ? ' tomorrow' : ' ' + DAYS[d]) };
-    }
+    var n = clinicNow(), h = HOURS[n.day];
+    if (n.t >= h[0] && n.t < h[1]) return { open: true, text: 'Open now · until ' + fmt(h[1]) };
+    if (n.t < h[0]) return { open: false, text: 'Opens ' + fmt(h[0]) + ' today' };
+    var next = (n.day + 1) % 7;
+    return { open: false, text: 'Opens ' + fmt(HOURS[next][0]) + (next === 0 ? ' Sunday' : ' tomorrow') };
   }
   var st = openStatus();
   $$('[data-open-badge]').forEach(function (el) { el.textContent = st.text; el.classList.toggle('is-open', st.open); });
   var today = clinicNow().day;
   $$('[data-day]').forEach(function (row) { if (+row.getAttribute('data-day') === today) row.classList.add('is-today'); });
 
-  /* ---------- tabs (concern finder, treatment menus) ---------- */
+  /* ---------- tabs (symptom finder, patient stories) ---------- */
   $$('[data-tabs]').forEach(function (box) {
     var tabs = $$('[role="tab"]', box);
     if (!tabs.length) return;
@@ -108,9 +127,10 @@
         if (p) { p.hidden = !on; if (on) panel = p; }
       });
       if (focus) tab.focus();
+      // on narrow screens the panel sits below the list; bring it into view if it is out of sight
       if (user && panel && window.innerWidth <= 900) {
         var r = panel.getBoundingClientRect();
-        if (r.top > window.innerHeight * 0.7 || r.bottom < 80) panel.scrollIntoView({ behavior: behavior, block: 'start' });
+        if (r.top > window.innerHeight * 0.7 || r.bottom < 80) panel.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
       }
     }
     tabs.forEach(function (t, i) {
@@ -125,33 +145,29 @@
     show(tabs.filter(function (t) { return t.getAttribute('aria-selected') === 'true'; })[0] || tabs[0], false, false);
   });
 
-  /* ---------- videos (the clinic tour, the treatment clip) ----------
-     The Desktop copy carries each clip inside the file (base64, in the script named by data-embed), turned into a
-     playable blob when needed; the hosted page streams it from data-src. They play muted while on screen; with
-     reduced motion or Data Saver they wait for the play button. */
-  var blobs = {};
-  function videoSrc(v) {
-    var id = v.getAttribute('data-embed'), el = id && document.getElementById(id);
-    // hosted page: phones get the lighter cut, as on Origin Dental
-    if (!el) return (window.matchMedia('(max-width: 640px)').matches && v.getAttribute('data-src-phone')) || v.getAttribute('data-src') || '';
-    if (blobs[id]) return blobs[id];
-    var bin = atob(el.textContent.trim()), bytes = new Uint8Array(bin.length);
-    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    return (blobs[id] = URL.createObjectURL(new Blob([bytes], { type: 'video/mp4' })));
-  }
+  /* ---------- videos ----------
+     Every video shows its poster first and fetches the clip only when it is needed: the clinic tour at
+     the top once the page has finished loading, the others as they scroll into view. Phones get a lighter
+     cut and wide screens a full-HD one. With reduced motion, Data Saver or 2G nothing plays until asked. */
   var conn = navigator.connection || {};
   var lowData = conn.saveData || /2g/.test(conn.effectiveType || '');
-  var whenIdle = function (fn) { if ('requestIdleCallback' in window) requestIdleCallback(fn, { timeout: 1500 }); else setTimeout(fn, 200); };
+  var whenIdle = function (fn) { if ('requestIdleCallback' in window) requestIdleCallback(fn, { timeout: 2000 }); else setTimeout(fn, 200); };
+  var mq = function (q) { return window.matchMedia(q).matches; };
   $$('[data-video]').forEach(function (v) {
-    // the play/pause button sits beside the video, or elsewhere with data-controls="<video id>"
-    var btn = (v.id && $('[data-controls="' + v.id + '"]')) || v.parentElement.querySelector('.video-btn');
+    var btn = v.parentElement.querySelector('.video-btn');
     var label = btn && btn.querySelector('[data-label]');
     var playText = label ? label.textContent : '';
     var playIcon = btn && btn.querySelector('.ic-play');
     var pauseIcon = btn && btn.querySelector('.ic-pause');
     var loaded = false, userPaused = false, inView = false, ready = !v.hasAttribute('data-after-load');
     var auto = !reduceMotion && !lowData;
-    var load = function () { if (!loaded) { loaded = true; v.src = videoSrc(v); } };
+    var load = function () {
+      if (loaded) return; loaded = true;
+      var src = v.getAttribute('data-src');
+      if (mq('(max-width: 640px)') && v.getAttribute('data-src-phone')) src = v.getAttribute('data-src-phone');
+      else if (mq('(min-width: 1400px)') && !lowData && v.getAttribute('data-src-hd')) src = v.getAttribute('data-src-hd');
+      v.src = src;
+    };
     var play = function () { load(); v.play().catch(function () {}); };
     var sync = function () {
       if (!btn) return;
@@ -166,7 +182,7 @@
       if (v.paused) { userPaused = false; play(); } else { userPaused = true; v.pause(); }
     });
     if ('IntersectionObserver' in window) {
-      new IntersectionObserver(function (es) { inView = es[0].isIntersecting; update(); }, { threshold: 0.25 }).observe(v);
+      new IntersectionObserver(function (es) { inView = es[0].isIntersecting; update(); }, { rootMargin: '200px 0px', threshold: 0.25 }).observe(v);
     }
     if (!ready) {
       var go = function () { whenIdle(function () { ready = true; update(); }); };
@@ -174,13 +190,14 @@
     }
   });
 
-  /* ---------- carousels (treatments, other treatments, Google reviews) ----------
+  /* ---------- carousels (other treatments, Google reviews) ----------
      A scroll-snapping row: swipe or scroll natively, arrows move one screenful and wrap round,
      optional dots, and a gentle autoplay that stops for hover, focus, touch and reduced motion. */
   $$('[data-carousel]').forEach(function (track) {
     var box = track.closest('[data-carousel-box]') || track.parentElement;
     var items = Array.prototype.slice.call(track.children);
     var dotsBox = track.getAttribute('data-dots') && document.getElementById(track.getAttribute('data-dots'));
+    var behavior = reduceMotion ? 'auto' : 'smooth';
     var step = function () { return items.length > 1 ? items[1].offsetLeft - items[0].offsetLeft : track.clientWidth; };
     var perView = function () { return Math.max(1, Math.round(track.clientWidth / step())); };
     var atEnd = function () { return track.scrollLeft + track.clientWidth >= track.scrollWidth - 4; };
@@ -213,164 +230,128 @@
     if (every && !reduceMotion && 'IntersectionObserver' in window) {
       var timer, visible = false, held = false;
       var tick = function () { clearInterval(timer); if (visible && !held) timer = setInterval(function () { go(1); }, every); };
-      box.addEventListener('mouseenter', function () { held = true; tick(); });
-      box.addEventListener('mouseleave', function () { held = false; tick(); });
-      box.addEventListener('focusin', function () { held = true; tick(); });
-      box.addEventListener('focusout', function () { held = false; tick(); });
+      var hold = function () { held = true; tick(); };
+      var release = function () { held = false; tick(); };
+      box.addEventListener('mouseenter', hold); box.addEventListener('mouseleave', release);
+      box.addEventListener('focusin', hold); box.addEventListener('focusout', release);
       track.addEventListener('touchstart', function () { held = true; tick(); }, { passive: true });
       new IntersectionObserver(function (es) { visible = es[0].isIntersecting; tick(); }, { threshold: 0.4 }).observe(track);
     }
   });
 
-  /* ---------- modals ---------- */
-  var openModal = null;
-  function setModal(m, open) {
-    if (!m || m.classList.contains('is-open') === open) return;
-    m.classList.toggle('is-open', open);
-    m.setAttribute('aria-hidden', open ? 'false' : 'true');
+  /* ---------- booking ---------- */
+  var form = $('#bookForm');
+  var modal = $('#bookModal');
+  function setModal(open) {
+    if (!modal || modal.classList.contains('is-open') === open) return;
+    modal.classList.toggle('is-open', open);
+    modal.setAttribute('aria-hidden', open ? 'false' : 'true');
     document.body.style.overflow = open ? 'hidden' : '';
-    openModal = open ? m : null;
-    if (open) { var f = $('input, .btn', m); if (f) setTimeout(function () { f.focus(); }, 50); }
+    if (open) { var b = $('.modal-card .btn', modal); if (b) b.focus(); }
   }
-  $$('[data-modal-close]').forEach(function (el) { el.addEventListener('click', function () { setModal(el.closest('.modal'), false); }); });
-  var bookModal = $('#bookModal'), enquiryModal = $('#enquiryModal'), qvModal = $('#qvModal');
-  $$('[data-enquiry]').forEach(function (b) { b.addEventListener('click', function () { setModal(enquiryModal, true); }); });
+  $$('[data-modal-close]').forEach(function (el) { el.addEventListener('click', function () { setModal(false); }); });
 
-  /* ---------- Mr Roy's full profile, in a dialog ---------- */
-  var QV = JSON.parse(($('#qv-data') || {}).textContent || '{}');
-  var qvBody = $('#qvBody');
-  var h = function (s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
-  function profile() {
-    var r = QV.roy;
-    qvBody.innerHTML = '<div class="qv-media"><img src="' + r.photo + '" alt="" style="object-position:44% center"></div>' +
-      '<div class="qv-main"><span class="label">' + h(r.role) + '</span><h3 id="qv-title">' + h(r.name) + '</h3><p class="qv-lead">' + h(r.quals) + '</p>' +
-      r.about.map(function (p) { return '<p>' + h(p) + '</p>'; }).join('') +
-      '<div class="tags">' + r.focus.map(function (f) { return '<span class="tag">' + h(f) + '</span>'; }).join('') + '</div>' +
-      '<div class="actions"><a class="btn btn-primary" href="#book" data-service="consultation">Book a consultation</a>' +
-      '<a class="btn btn-outline" href="tel:' + QV.tel + '">' + QV.icons.phone + ' ' + h(QV.phone) + '</a></div></div>' +
-      '<div class="qv-foot"><b>Career and training</b><ol class="timeline">' + r.timeline.map(function (x) { return '<li><span class="when">' + h(x[0]) + '</span><div><b>' + h(x[1]) + '</b><span>' + h(x[2]) + '</span></div></li>'; }).join('') + '</ol></div>';
-    qvBody.parentElement.scrollTop = 0;
-    setModal(qvModal, true);
-  }
-  document.addEventListener('click', function (e) {
-    var a = e.target.closest && e.target.closest('[data-qv="roy"]');
-    if (a && qvBody && QV.roy) { e.preventDefault(); profile(); }
-  });
-  // "Book a consultation" inside the profile closes it, then the link scrolls to the form
-  if (qvModal) qvModal.addEventListener('click', function (e) {
-    if (e.target.closest('a[href^="#"]')) setModal(qvModal, false);
-  });
+  if (form) {
+    // earliest date = today in clinic time
+    var minDate = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    if (form.elements.date) form.elements.date.min = minDate;
 
-  /* ---------- consultation requests ---------- */
-  var minDate = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-  var forms = $$('[data-book-form]');
-  var optText = function (sel) { return sel.options[sel.selectedIndex].text; };
-  function prefill(values) {
-    forms.concat($('#quickBook') || [], $('#enquiryForm') || []).forEach(function (f) {
-      var sel = f.elements.service;
-      if (values.service && sel && $$('option', sel).some(function (o) { return o.value === values.service; })) sel.value = values.service;
-      if (values.date && f.elements.date && values.date >= minDate) f.elements.date.value = values.date;
-      if (values.slot && f.elements.slot && f.elements.slot.length) $$('input[name="slot"]', f).forEach(function (r) { r.checked = r.value === values.slot; });
-    });
-  }
-  // "Book" links carry the treatment: data-service="lip-enhancement"
-  document.addEventListener('click', function (e) {
-    var a = e.target.closest && e.target.closest('[data-service]');
-    if (a) prefill({ service: a.getAttribute('data-service') });
-  }, true);
+    // prefill from links such as index.html?service=implants#book, or from the quick booking bar
+    var prefill = function (params) {
+      ['service', 'doctor'].forEach(function (k) {
+        var v = params.get(k), sel = form.elements[k];
+        if (v && sel && $$('option', sel).some(function (o) { return o.value === v; })) sel.value = v;
+      });
+      var dt = params.get('date');
+      if (dt && /^\d{4}-\d{2}-\d{2}$/.test(dt) && dt >= minDate) form.elements.date.value = dt;
+    };
+    prefill(new URLSearchParams(location.search));
 
-  var quick = $('#quickBook');
-  if (quick) {
-    quick.elements.date.min = minDate;
-    quick.addEventListener('submit', function (e) {
+    var goToForm = function (focusName) {
+      var sec = $('#book');
+      if (!sec) return;
+      sec.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+      if (history.replaceState) history.replaceState(null, '', location.pathname + location.search + '#book');
+      if (focusName) setTimeout(function () { form.elements.name.focus({ preventScroll: true }); }, reduceMotion ? 0 : 700);
+    };
+
+    var quick = $('#quickBook');
+    if (quick) {
+      if (quick.elements.date) quick.elements.date.min = minDate;
+      quick.addEventListener('submit', function (e) {
+        e.preventDefault();
+        prefill(new URLSearchParams(new FormData(quick)));
+        goToForm(true);
+      });
+    }
+
+    // booking links that point at this same page: fill the form in place instead of reloading
+    var samePage = function (p) { return p.replace(/index\.html$/, ''); };
+    document.addEventListener('click', function (e) {
+      var a = e.target.closest && e.target.closest('a[href*="#book"]');
+      if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      var url = new URL(a.getAttribute('href'), location.href);
+      if (samePage(url.pathname) !== samePage(location.pathname)) return;
       e.preventDefault();
-      prefill({ service: quick.elements.service.value, date: quick.elements.date.value, slot: quick.elements.slot.value });
-      $('#book').scrollIntoView({ behavior: behavior, block: 'start' });
-      setTimeout(function () { var n = $('#book-name'); if (n) n.focus({ preventScroll: true }); }, reduceMotion ? 0 : 700);
+      prefill(url.searchParams);
+      goToForm(false);
     });
-  }
 
-  function validator(form, rules) {
+    var rules = {
+      name: function (v) { return v.trim().length >= 2 || 'Please tell us your name.'; },
+      phone: function (v) { var digits = v.replace(/[^\d]/g, ''); return (digits.length >= 10 && digits.length <= 15) || 'Please enter a phone number we can call.'; },
+      date: function (v) { return (!!v && v >= minDate) || 'Please pick today or a later date.'; },
+      slot: function () { return !!form.querySelector('input[name="slot"]:checked') || 'Please choose a time of day.'; }
+    };
     function check(name) {
       var field = form.querySelector('[data-field="' + name + '"]');
       var el = form.elements[name];
       var res = rules[name](el && el.value !== undefined ? el.value : '');
       if (field) {
         field.classList.toggle('has-error', res !== true);
-        var er = field.querySelector('.err'); if (er && res !== true) er.textContent = res;
+        var e = field.querySelector('.err'); if (e && res !== true) e.textContent = res;
       }
       return res === true;
     }
-    Object.keys(rules).forEach(function (nm) {
-      var el = form.elements[nm];
+    Object.keys(rules).forEach(function (n) {
+      var el = form.elements[n];
       if (!el) return;
-      (el.length && !el.tagName ? Array.prototype.slice.call(el) : [el]).forEach(function (x) { x.addEventListener('change', function () { check(nm); }); });
+      (el.length && !el.tagName ? Array.prototype.slice.call(el) : [el]).forEach(function (x) {
+        x.addEventListener('change', function () { check(n); });
+      });
     });
-    return function () {
-      var ok = Object.keys(rules).map(check).every(Boolean);
-      if (!ok) { var first = form.querySelector('.has-error input, .has-error select'); if (first) first.focus(); }
-      return ok;
-    };
-  }
-  var nameRule = function (v) { return v.trim().length >= 2 || 'Please tell us your name.'; };
-  var phoneRule = function (v) { var d = v.replace(/[^\d]/g, ''); return (d.length >= 7 && d.length <= 15) || 'Please enter a phone number we can call.'; };
 
-  function confirm(data) {
-    $('#sumName').textContent = data.name;
-    $('#sumService').textContent = data.service;
-    $('#sumWhen').textContent = data.when;
-    var body = 'Hello Excellence Medical,\n\nI would like to arrange a consultation.\n\nName: ' + data.name + '\nPhone: ' + data.phone +
-      '\nTreatment: ' + data.service + '\nPreferred time: ' + data.when + (data.note ? '\n\n' + data.note : '');
-    $('#mailSend').href = 'mailto:' + CLINIC_EMAIL + '?subject=' + encodeURIComponent('Consultation request: ' + data.service) + '&body=' + encodeURIComponent(body);
-    setModal(bookModal, true);
-  }
-
-  forms.forEach(function (form) {
-    form.elements.date.min = minDate;
-    var valid = validator(form, {
-      name: nameRule, phone: phoneRule,
-      date: function (v) { return (!!v && v >= minDate) || 'Please pick today or a later date.'; },
-      slot: function () { return !!form.querySelector('input[name="slot"]:checked') || 'Please choose a time of day.'; }
-    });
     form.addEventListener('submit', function (e) {
       e.preventDefault();
-      if (!valid()) return;
+      var ok = Object.keys(rules).map(check).every(Boolean);
+      if (!ok) { var first = form.querySelector('.has-error input, .has-error select'); if (first) first.focus(); return; }
       var f = form.elements;
-      var when = new Date(f.date.value + 'T00:00:00').toLocaleDateString('en-IE', { weekday: 'short', day: 'numeric', month: 'short' });
-      confirm({ name: f.name.value.trim(), phone: f.phone.value.trim(), service: optText(f.service), when: when + ' · ' + form.querySelector('input[name="slot"]:checked').value, note: f.note.value.trim() });
+      var opt = function (sel) { return sel.options[sel.selectedIndex].text; };
+      var slot = form.querySelector('input[name="slot"]:checked');
+      var when = new Date(f.date.value + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+      var data = {
+        name: f.name.value.trim(), phone: f.phone.value.trim(),
+        service: opt(f.service), doctor: opt(f.doctor), when: when + ' · ' + slot.value,
+        note: (f.note && f.note.value.trim()) || ''
+      };
+      $('#sumName').textContent = data.name;
+      $('#sumService').textContent = data.service;
+      $('#sumDoctor').textContent = data.doctor;
+      $('#sumWhen').textContent = data.when;
+      var msg = 'Hello Origin Dental, I would like to book a visit.\n' +
+        'Name: ' + data.name + '\nPhone: ' + data.phone + '\nTreatment: ' + data.service +
+        '\nDentist: ' + data.doctor + '\nWhen: ' + data.when + (data.note ? '\nNote: ' + data.note : '');
+      $('#waSend').href = 'https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent(msg);
+      setModal(true);
       form.reset();
-      f.date.min = minDate;
-    });
-  });
-
-  var enquiry = $('#enquiryForm');
-  if (enquiry) {
-    var validEnquiry = validator(enquiry, { name: nameRule, phone: phoneRule });
-    enquiry.addEventListener('submit', function (e) {
-      e.preventDefault();
-      if (!validEnquiry()) return;
-      var f = enquiry.elements;
-      setModal(enquiryModal, false);
-      confirm({ name: f.name.value.trim(), phone: f.phone.value.trim(), service: optText(f.service), when: 'Please call me back', note: f.note.value.trim() });
-      enquiry.reset();
+      if (form.elements.date) form.elements.date.min = minDate;
     });
   }
 
   document.addEventListener('keydown', function (e) {
     if (e.key !== 'Escape') return;
-    closeAll(); setDrawer(false); if (openModal) setModal(openModal, false);
+    closeAll(); setDrawer(false); setModal(false);
   });
-
-  /* ---------- map ----------
-     Google's map is slow to start on phones, so it begins loading in the background shortly after the page
-     is up (or at once if someone heads for it first), and is ready by the time it scrolls into view. */
-  var mapFrame = $('.map iframe[data-src]');
-  if (mapFrame) {
-    var loadMap = function () { if (!mapFrame.getAttribute('src')) mapFrame.src = mapFrame.getAttribute('data-src'); };
-    var soon = function () { setTimeout(function () { whenIdle(loadMap); }, 800); };
-    if (document.readyState === 'complete') soon(); else window.addEventListener('load', soon);
-    if ('IntersectionObserver' in window) new IntersectionObserver(function (es) { if (es[0].isIntersecting) loadMap(); }, { rootMargin: '1500px 0px' }).observe(mapFrame);
-  }
 
   /* ---------- footer year ---------- */
   $$('[data-year]').forEach(function (el) { el.textContent = new Date().getFullYear(); });

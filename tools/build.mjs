@@ -1,161 +1,138 @@
 /* ==========================================================================
-   Excellence Medical — one-page demo generator
-   Writes index.html (for hosting) and ../Excellence.html (the Desktop copy that opens in Chrome).
-   The front page is self-contained: logo, clinic photos and the clinic tour video are embedded;
-   treatment photos load from Pexels. Every treatment in the menus opens a short preview on the page.
-   No dependencies:  node tools/build.mjs
+   Origin Dental — static page generator
+   Writes index.html, international-patients.html, services/*.html and doctors/*.html
+   from tools/content.mjs. No dependencies:  node tools/build.mjs
    ========================================================================== */
-import { readFileSync, writeFileSync, statSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { clinic as C, doctor as DR, categories as CAT, treatments as T, menuWomen, menuMen, menPopular, testimonials, tourYoutube, reviews, px } from './content.mjs';
+import { clinic as C, menu, services as S, doctors as D, team, leaders, reviews } from './content.mjs';
 import { iconSvg } from './icons.mjs';
-import { SPRITE, VB } from './sprite.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const hash = f => createHash('md5').update(readFileSync(join(ROOT, f))).digest('hex').slice(0, 10);
+const V = { css: hash('assets/site.css'), js: hash('assets/site.js') };
 const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-const read = f => readFileSync(join(ROOT, f));
-const data = (f, type) => `data:${type};base64,${read(f).toString('base64')}`;
-const IMG = {
-  logo: data('assets/img/logo.png', 'image/png'),
-  icon64: data('assets/img/icon-64.png', 'image/png'),
-  icon180: data('assets/img/icon-180.png', 'image/png'),
-  poster: data('assets/media/tour-poster.webp', 'image/webp'),
-  clinicPoster: data('assets/media/clinic-poster.webp', 'image/webp'),
-  portrait: data('assets/img/about-portrait.webp', 'image/webp') // Pexels portrait, chosen by the client
-};
-const S = Object.fromEntries(['exterior', 'reception', 'room-fireplace', 'rcs-certificate', 'roy-desk', 'lounge', 'room-window']
-  .map(name => [name, data(`assets/img/clinic-${name}.webp`, 'image/webp')]));
-const LOGO = { w: 368, h: 140 }; // logo.png
-
-const MAP = `https://maps.google.com/maps?q=${encodeURIComponent(C.mapQuery)}&amp;z=15&amp;output=embed`;
+const WA_TEXT = encodeURIComponent(`Hello ${C.name}, I would like to ask about an appointment.`);
+const WA = `https://wa.me/${C.wa}?text=${WA_TEXT}`;
+const MAP = `https://maps.google.com/maps?q=${encodeURIComponent(C.mapQuery)}&amp;z=14&amp;output=embed`;
 const DIRECTIONS = `https://www.google.com/maps/dir/?api=1&amp;destination=${encodeURIComponent(C.mapQuery)}`;
+// logo size from the PNG header, shown 64px tall
+const png = readFileSync(join(ROOT, 'assets/img/logo.png'));
+const LOGO = { w: Math.round(png.readUInt32BE(16) * 64 / png.readUInt32BE(20)), h: 64 };
 
+/* ---------- icons (Font Awesome Free 6.5.0, CC BY 4.0; Google "G" mark) ---------- */
+const SPRITE = `<!-- Icons: Font Awesome Free 6.5.0 by @fontawesome - https://fontawesome.com - CC BY 4.0 -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><symbol id="i-phone" viewBox="0 0 512 512"><path d="M164.9 24.6c-7.7-18.6-28-28.5-47.4-23.2l-88 24C12.1 30.2 0 46 0 64C0 311.4 200.6 512 448 512c18 0 33.8-12.1 38.6-29.5l24-88c5.3-19.4-4.6-39.7-23.2-47.4l-96-40c-16.3-6.8-35.2-2.1-46.3 11.6L304.7 368C234.3 334.7 177.3 277.7 144 207.3L193.3 167c13.7-11.2 18.4-30 11.6-46.3l-40-96z"/></symbol><symbol id="i-envelope" viewBox="0 0 512 512"><path d="M48 64C21.5 64 0 85.5 0 112c0 15.1 7.1 29.3 19.2 38.4L236.8 313.6c11.4 8.5 27 8.5 38.4 0L492.8 150.4c12.1-9.1 19.2-23.3 19.2-38.4c0-26.5-21.5-48-48-48H48zM0 176V384c0 35.3 28.7 64 64 64H448c35.3 0 64-28.7 64-64V176L294.4 339.2c-22.8 17.1-54 17.1-76.8 0L0 176z"/></symbol><symbol id="i-location-dot" viewBox="0 0 384 512"><path d="M215.7 499.2C267 435 384 279.4 384 192C384 86 298 0 192 0S0 86 0 192c0 87.4 117 243 168.3 307.2c12.3 15.3 35.1 15.3 47.4 0zM192 128a64 64 0 1 1 0 128 64 64 0 1 1 0-128z"/></symbol><symbol id="i-chevron-down" viewBox="0 0 512 512"><path d="M233.4 406.6c12.5 12.5 32.8 12.5 45.3 0l192-192c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L256 338.7 86.6 169.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l192 192z"/></symbol><symbol id="i-chevron-right" viewBox="0 0 320 512"><path d="M310.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-192 192c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L242.7 256 73.4 86.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l192 192z"/></symbol><symbol id="i-chevron-left" viewBox="0 0 320 512"><path d="M9.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l192 192c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L77.3 256 246.6 86.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-192 192z"/></symbol><symbol id="i-bars" viewBox="0 0 448 512"><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></symbol><symbol id="i-xmark" viewBox="0 0 384 512"><path d="M342.6 150.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L192 210.7 86.6 105.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3L146.7 256 41.4 361.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L192 301.3 297.4 406.6c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L237.3 256 342.6 150.6z"/></symbol><symbol id="i-arrow-right" viewBox="0 0 448 512"><path d="M438.6 278.6c12.5-12.5 12.5-32.8 0-45.3l-160-160c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3L338.8 224 32 224c-17.7 0-32 14.3-32 32s14.3 32 32 32l306.7 0L233.4 393.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0l160-160z"/></symbol><symbol id="i-check" viewBox="0 0 448 512"><path d="M438.6 105.4c12.5 12.5 12.5 32.8 0 45.3l-256 256c-12.5 12.5-32.8 12.5-45.3 0l-128-128c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0L160 338.7 393.4 105.4c12.5-12.5 32.8-12.5 45.3 0z"/></symbol><symbol id="i-play" viewBox="0 0 384 512"><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></symbol><symbol id="i-pause" viewBox="0 0 320 512"><path d="M48 64C21.5 64 0 85.5 0 112V400c0 26.5 21.5 48 48 48H80c26.5 0 48-21.5 48-48V112c0-26.5-21.5-48-48-48H48zm192 0c-26.5 0-48 21.5-48 48V400c0 26.5 21.5 48 48 48h32c26.5 0 48-21.5 48-48V112c0-26.5-21.5-48-48-48H240z"/></symbol><symbol id="i-circle-info" viewBox="0 0 512 512"><path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM216 336h24V272H216c-13.3 0-24-10.7-24-24s10.7-24 24-24h48c13.3 0 24 10.7 24 24v88h8c13.3 0 24 10.7 24 24s-10.7 24-24 24H216c-13.3 0-24-10.7-24-24s10.7-24 24-24zm40-208a32 32 0 1 1 0 64 32 32 0 1 1 0-64z"/></symbol><symbol id="i-whatsapp" viewBox="0 0 448 512"><path d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L0 480l117.7-30.9c32.4 17.7 68.9 27 106.1 27h.1c122.3 0 224.1-99.6 224.1-222 0-59.3-25.2-115-67.1-157zm-157 341.6c-33.2 0-65.7-8.9-94-25.7l-6.7-4-69.8 18.3L72 359.2l-4.4-7c-18.5-29.4-28.2-63.3-28.2-98.2 0-101.7 82.8-184.5 184.6-184.5 49.3 0 95.6 19.2 130.4 54.1 34.8 34.9 56.2 81.2 56.1 130.5 0 101.8-84.9 184.6-186.6 184.6zm101.2-138.2c-5.5-2.8-32.8-16.2-37.9-18-5.1-1.9-8.8-2.8-12.5 2.8-3.7 5.6-14.3 18-17.6 21.8-3.2 3.7-6.5 4.2-12 1.4-32.6-16.3-54-29.1-75.5-66-5.7-9.8 5.7-9.1 16.3-30.3 1.8-3.7.9-6.9-.5-9.7-1.4-2.8-12.5-30.1-17.1-41.2-4.5-10.8-9.1-9.3-12.5-9.5-3.2-.2-6.9-.2-10.6-.2-3.7 0-9.7 1.4-14.8 6.9-5.1 5.6-19.4 19-19.4 46.3 0 27.3 19.9 53.7 22.6 57.4 2.8 3.7 39.1 59.7 94.8 83.8 35.2 15.2 49 16.5 66.6 13.9 10.7-1.6 32.8-13.4 37.4-26.4 4.6-13 4.6-24.1 3.2-26.4-1.3-2.5-5-3.9-10.5-6.6z"/></symbol><symbol id="i-plus" viewBox="0 0 448 512"><path d="M256 80c0-17.7-14.3-32-32-32s-32 14.3-32 32V224H48c-17.7 0-32 14.3-32 32s14.3 32 32 32H192V432c0 17.7 14.3 32 32 32s32-14.3 32-32V288H400c17.7 0 32-14.3 32-32s-14.3-32-32-32H256V80z"/></symbol><symbol id="i-clock" viewBox="0 0 512 512"><path d="M256 0a256 256 0 1 1 0 512A256 256 0 1 1 256 0zM232 120V256c0 8 4 15.5 10.7 20l96 64c11 7.4 25.9 4.4 33.3-6.7s4.4-25.9-6.7-33.3L280 243.2V120c0-13.3-10.7-24-24-24s-24 10.7-24 24z"/></symbol><symbol id="i-kit-medical" viewBox="0 0 576 512"><path d="M64 32C28.7 32 0 60.7 0 96V416c0 35.3 28.7 64 64 64H96V32H64zm64 0V480H448V32H128zM512 480c35.3 0 64-28.7 64-64V96c0-35.3-28.7-64-64-64H480V480h32zM256 176c0-8.8 7.2-16 16-16h32c8.8 0 16 7.2 16 16v48h48c8.8 0 16 7.2 16 16v32c0 8.8-7.2 16-16 16H320v48c0 8.8-7.2 16-16 16H272c-8.8 0-16-7.2-16-16V288H208c-8.8 0-16-7.2-16-16V240c0-8.8 7.2-16 16-16h48V176z"/></symbol><symbol id="i-star" viewBox="0 0 576 512"><path d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"/></symbol><symbol id="i-google" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></symbol></svg>`;
+const VB = { phone: '0 0 512 512', envelope: '0 0 512 512', 'location-dot': '0 0 384 512', 'chevron-down': '0 0 512 512', 'chevron-right': '0 0 320 512', 'chevron-left': '0 0 320 512', bars: '0 0 448 512', xmark: '0 0 384 512', 'arrow-right': '0 0 448 512', check: '0 0 448 512', play: '0 0 384 512', pause: '0 0 320 512', 'circle-info': '0 0 512 512', whatsapp: '0 0 448 512', plus: '0 0 448 512', clock: '0 0 512 512', 'kit-medical': '0 0 576 512', star: '0 0 576 512', google: '0 0 48 48' };
 const ic = (n, extra = '') => `<i class="ic ic-${n}${extra ? ' ' + extra : ''}" aria-hidden="true"><svg viewBox="${VB[n]}"><use href="#i-${n}"/></svg></i>`;
 const stars = n => `<span class="stars" aria-label="${n} out of 5 stars">${ic('star').repeat(n)}</span>`;
 
-/* ---------- links and small builders ----------
-   Treatment links are placeholders for the demo (data-dummy: they go nowhere); treatment pages come after approval. */
-const tLink = k => `href="#" data-dummy data-treatment="${k}"`;
-const cLink = c => `href="#" data-dummy data-treatment="${c}"`;
-const bookFor = k => `href="#book" data-service="${k}"`;
-const catOf = k => CAT[T[k].cat];
-const priceOf = k => T[k].price || catOf(k).price || catOf(k).priceText;
-const priceHtml = p => p.startsWith('From ') ? `From <b>${esc(p.slice(5))}</b>` : `<b>${esc(p)}</b>`;
-const itemLink = item => {
-  const [k, label] = Array.isArray(item) ? item : [item];
-  if (k.startsWith('@')) return `<a ${cLink(k.slice(1))}>${esc(label)}</a>`;
-  return `<a ${tLink(k)}>${esc(label || T[k].menu || T[k].title)}</a>`;
+/* ---------- small builders ---------- */
+const all = Object.keys(S);
+const groupOf = slug => menu.find(m => typeof m === 'object' && m.items.includes(slug));
+const priceLabel = s => s.priceText || `From ${s.price}`;
+const svcImg = (R, s, sizes, eager = false) => {
+  const [w, h] = s.ratio || [1200, 800];
+  return `<img src="${R}assets/img/${s.image}-600.webp" srcset="${R}assets/img/${s.image}-600.webp 600w, ${R}assets/img/${s.image}.webp 1200w" sizes="${sizes}" alt="${esc(s.alt)}" width="${w}" height="${h}"${eager ? ' fetchpriority="high"' : ' loading="lazy" decoding="async"'}${s.pos ? ` style="object-position:${s.pos}"` : ''}>`;
 };
-const photo = (id, w, alt, { pos = 'center' } = {}) =>
-  `<img src="${px(id, w)}" alt="${esc(alt)}" loading="lazy" decoding="async" style="object-position:${pos}">`;
-// lower-case a title for running text, keeping names and acronyms
-const KEEP = /^(Silhouette|Soft|PRP|Mr|Roy|Crow’s|Crow's|Dublin)$/;
-const lower = s => s.split(' ').map(w => KEEP.test(w) || /^[A-Z]{2,}/.test(w) || w.startsWith('(') ? w : w.toLowerCase()).join(' ');
-const firstSentence = s => s.split('. ')[0].replace(/\.$/, '') + '.';
-const catOrder = ['anti-wrinkle', 'dermal-fillers', 'silhouette-soft', 'prp', 'minor-surgery', 'medical', 'skincare'];
-const inCat = c => Object.keys(T).filter(k => T[k].cat === c);
+const drImg = (R, d, sizes, eager = false) => d.round
+  ? `<img src="${R}assets/img/${d.image}.webp" alt="Portrait of ${esc(d.name)}" width="320" height="320"${eager ? ' fetchpriority="high"' : ' loading="lazy" decoding="async"'}>`
+  : `<img src="${R}assets/img/${d.image}-480.webp" srcset="${R}assets/img/${d.image}-480.webp 480w, ${R}assets/img/${d.image}.webp 720w" sizes="${sizes}" alt="Portrait of ${esc(d.name)}" width="720" height="900"${eager ? ' fetchpriority="high"' : ' loading="lazy" decoding="async"'}>`;
+const drThumb = (R, d, size = 36) => `<img src="${R}assets/img/${d.round ? d.image + '-120' : d.image + '-240'}.webp" alt="" width="${size}" height="${size}" loading="lazy" decoding="async">`;
 
 function serviceOptions(blank) {
-  return `<option value="not-sure">${blank}</option><option value="consultation">Consultation with Mr Roy (${C.consultation})</option>` +
-    catOrder.map(c => `<optgroup label="${esc(CAT[c].title)}">${inCat(c).map(k => `<option value="${k}">${esc(T[k].title)}</option>`).join('')}</optgroup>`).join('');
+  const opt = slug => `<option value="${slug}">${esc(S[slug].menu)}</option>`;
+  return `<option value="not-sure">${blank}</option>` + menu.map(m => typeof m === 'object'
+    ? `<optgroup label="${esc(m.label)}">${m.items.map(opt).join('')}</optgroup>` : '').join('') +
+    `<optgroup label="Other treatments">${menu.filter(m => typeof m === 'string').map(opt).join('')}</optgroup>`;
 }
-
-// social icons: placeholders for the demo (data-dummy links go nowhere); the real profiles are in content.mjs
-const social = () => C.social.map(([k, label]) => `<a href="#" data-dummy aria-label="${label}">${ic(k)}</a>`).join('');
+const doctorOptions = blank => `<option value="any">${blank}</option>` + [...leaders, ...team].map(k => `<option value="${k}">${esc(D[k].name)}</option>`).join('');
 
 /* ---------- page frame ---------- */
-function head(css) {
+function head({ R, title, desc, image = 'assets/img/clinic-room.webp', ld = '', preload = '' }) {
   return `<!doctype html>
-<html lang="en-IE">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${esc(`${C.name} | Aesthetic & Minor Surgery Clinic, Donnybrook, Dublin 4`)}</title>
-<meta name="description" content="${esc(`${C.name}, ${C.area}. Anti-wrinkle treatments, dermal fillers, Silhouette Soft lifts, PRP and private minor surgery, all performed by Mr Shunil Roy, FRCS (Edinburgh). Call ${C.phone}.`)}">
+<title>${esc(title)}</title>
+<meta name="description" content="${esc(desc)}">
 <meta name="robots" content="noindex">
-<meta name="theme-color" content="#17838a">
-<link rel="icon" type="image/png" href="${IMG.icon64}">
-<link rel="apple-touch-icon" href="${IMG.icon180}">
+<meta name="theme-color" content="#1ba5e1">
+<meta property="og:type" content="website">
+<meta property="og:title" content="${esc(title)}">
+<meta property="og:description" content="${esc(desc)}">
+<meta property="og:image" content="${R}${image}">
+<link rel="icon" type="image/png" href="${R}assets/img/icon-64.png">
+<link rel="apple-touch-icon" href="${R}assets/img/icon-180.png">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="preconnect" href="https://images.pexels.com">
-<link rel="preconnect" href="https://www.google.com">
-<link rel="preconnect" href="https://maps.gstatic.com" crossorigin>
-<link rel="preconnect" href="https://maps.googleapis.com" crossorigin>
 <link rel="preload" href="https://fonts.gstatic.com/s/poppins/v24/pxiEyp8kv8JHgFVrJJfecg.woff2" as="font" type="font/woff2" crossorigin>
-<style>
-${css}
-</style>
+<link rel="stylesheet" href="${R}assets/site.css?v=${V.css}">${preload ? `
+<link rel="preload" as="image" href="${preload}" fetchpriority="high">` : ''}${ld}
 </head>
 <body id="top">
-<!-- Concept design for ${C.name} by Chennai Digital Team. Not the clinic's live website. -->
 ${SPRITE}
 <a class="skip-link" href="#main">Skip to content</a>`;
 }
 
-// the treatment groups only, in columns, as on the clinic's current menu
-function megaPanel(id, cols) {
-  return `<div class="dd mega" id="${id}">
-            <div class="mega-cols" style="--cols:${cols.length}">
-              ${cols.map(col => `<div class="mega-col">${col.map(g => `<div class="mega-group"><a class="mega-head" ${cLink(g.cat)}><span class="mega-ico">${iconSvg(CAT[g.cat].icon)}</span>${esc(g.label)}</a><ul>${g.items.map(it => `<li>${itemLink(it)}</li>`).join('')}</ul></div>`).join('')}</div>`).join('\n              ')}
-            </div>
-            <div class="mega-foot">
-              <a class="text-link" href="#treatments">View all treatments ${ic('arrow-right')}</a>
-              <span>Not sure which treatment is right for you? Start with a consultation (${C.consultation}).</span>
-              <a class="btn btn-primary btn-sm" ${bookFor('consultation')}>Book a consultation</a>
-            </div>
-          </div>`;
-}
-
-function chrome() {
-  const drawerGroups = menu => menu.flat().map(g => `<details class="sub"><summary>${esc(g.label)} ${ic('chevron-down', 'chev')}</summary><a ${cLink(g.cat)}><b>All ${esc(CAT[g.cat].short)}</b></a>${g.items.map(itemLink).join('')}</details>`).join('');
+function chrome(R, isHome, active) {
+  const h = id => isHome ? `#${id}` : `${R}index.html#${id}`;
+  const svc = slug => `${R}services/${slug}.html`;
+  const dr = slug => `${R}doctors/${slug}.html`;
+  const cur = name => active === name ? ' is-current' : '';
+  const ddServices = menu.map((m, i) => typeof m === 'object'
+    ? `<li class="has-sub"><button type="button" class="dd-parent" aria-expanded="false" aria-controls="dd-g${i}">${esc(m.label)}${ic('chevron-right', 'dd-chev')}</button>
+            <ul class="dd dd--sub" id="dd-g${i}">${m.items.map(k => `<li><a href="${svc(k)}">${esc(S[k].menu)}</a></li>`).join('')}</ul></li>`
+    : `<li><a href="${svc(m)}">${esc(S[m].menu)}</a></li>`).join('\n            ');
+  const drawerServices = menu.map(m => typeof m === 'object'
+    ? `<details class="sub"><summary>${esc(m.label)} ${ic('chevron-down', 'chev')}</summary>${m.items.map(k => `<a href="${svc(k)}">${esc(S[k].menu)}</a>`).join('')}</details>`
+    : `<a href="${svc(m)}">${esc(S[m].menu)}</a>`).join('');
+  const people = [...leaders, ...team];
   return `
 <div class="topbar">
   <div class="wrap">
     <ul class="topbar-list">
       <li><a href="tel:${C.tel}">${ic('phone')}${C.phone}</a></li>
       <li class="hide-md"><a href="mailto:${C.email}">${ic('envelope')}${C.email}</a></li>
-      <li class="hide-lg"><a href="#find">${ic('location-dot')}${C.address}</a></li>
+      <li class="hide-lg"><span>${ic('location-dot')}${C.area}</span></li>
     </ul>
     <div class="topbar-right">
-      <span class="open-badge" data-open-badge>Mon–Fri 10:30 AM – 4:30 PM</span>
-      <span class="topbar-social">${social()}</span>
-      <a class="topbar-cta" ${bookFor('consultation')}>Book consultation</a>
+      <span class="open-badge" data-open-badge>Mon–Sat 8 AM – 9 PM</span>
+      <a class="topbar-cta" href="${h('book')}">Book appointment</a>
     </div>
   </div>
 </div>
 <header class="site-header">
   <div class="wrap nav">
-    <a class="brand" href="#top"><img src="${IMG.logo}" alt="${C.name} — Dr. Shunil Roy M.B.B.S FRCS" width="${Math.round(LOGO.w * 58 / LOGO.h)}" height="58"></a>
+    <a class="brand" href="${isHome ? '#top' : R + 'index.html'}"><img src="${R}assets/img/logo.webp" alt="${C.name} — Advanced dentistry, simplified" width="${LOGO.w}" height="${LOGO.h}"></a>
     <nav class="main-nav" aria-label="Main">
       <ul class="nav-links">
-        <li class="has-dd">
-          <button type="button" class="nav-top" data-dropdown aria-expanded="false" aria-controls="dd-about">About ${ic('chevron-down', 'chev')}</button>
+        <li class="has-dd${cur('about')}">
+          <button type="button" class="nav-top" data-dropdown aria-expanded="false" aria-controls="dd-about">About us ${ic('chevron-down', 'chev')}</button>
           <ul class="dd" id="dd-about">
-            <li><a href="#about">About ${C.name}</a></li>
-            <li><a href="#surgeon">About Mr Shunil Roy</a></li>
-            <li><a href="#clinic">Why come to us</a></li>
-            <li><a href="#stories">Video testimonials</a></li>
-            <li><a href="#prices">Price guide</a></li>
+            <li><a href="${h('about')}">About ${C.name}</a></li>
+            ${people.map(k => `<li><a href="${dr(k)}">${esc(D[k].name)}</a></li>`).join('\n            ')}
           </ul>
         </li>
-        <li class="has-dd has-mega">
-          <button type="button" class="nav-top" data-dropdown aria-expanded="false" aria-controls="dd-treat">Select Treatment ${ic('chevron-down', 'chev')}</button>
-          ${megaPanel('dd-treat', menuWomen)}
+        <li class="has-dd${cur('services')}">
+          <button type="button" class="nav-top" data-dropdown aria-expanded="false" aria-controls="dd-services">Services ${ic('chevron-down', 'chev')}</button>
+          <ul class="dd" id="dd-services">
+            ${ddServices}
+            <li class="dd-all"><a href="${R}services/index.html">View all treatments</a></li>
+          </ul>
         </li>
-        <li class="has-dd has-mega">
-          <button type="button" class="nav-top" data-dropdown aria-expanded="false" aria-controls="dd-men">Men ${ic('chevron-down', 'chev')}</button>
-          ${megaPanel('dd-men', menuMen)}
-        </li>
-        <li><a class="nav-top" href="#prices">Price guide</a></li>
-        <li><a class="nav-top" href="#clinic">Clinic tour</a></li>
+        <li><a class="nav-top" href="${h('reviews')}">Testimonials</a></li>
+        <li${active === 'intl' ? ' class="is-current"' : ''}><a class="nav-top" href="${R}international-patients.html">International patients</a></li>
+        <li><a class="nav-top" href="${h('tour')}">Take a tour</a></li>
         <li class="has-dd dd-end">
-          <button type="button" class="nav-top" data-dropdown aria-expanded="false" aria-controls="dd-contact">Contact ${ic('chevron-down', 'chev')}</button>
+          <button type="button" class="nav-top" data-dropdown aria-expanded="false" aria-controls="dd-contact">Contact us ${ic('chevron-down', 'chev')}</button>
           <ul class="dd" id="dd-contact">
-            <li><a href="#find">Contact &amp; directions</a></li>
-            <li><a ${bookFor('consultation')}>Request a consultation</a></li>
+            <li><a href="${h('find')}">Contact &amp; directions</a></li>
+            <li><a href="${h('book')}">Book an appointment</a></li>
             <li><a href="tel:${C.tel}">Call ${C.phone}</a></li>
-            <li><a href="mailto:${C.email}">Email ${C.email}</a></li>
+            <li><a href="${WA}" target="_blank" rel="noopener">Message us on WhatsApp</a></li>
           </ul>
         </li>
       </ul>
@@ -167,106 +144,102 @@ function chrome() {
   <div class="drawer-scrim" data-drawer-close></div>
   <div class="drawer-panel" role="dialog" aria-modal="true" aria-label="Menu">
     <div class="drawer-head">
-      <img src="${IMG.logo}" alt="${C.name}" width="${Math.round(LOGO.w * 44 / LOGO.h)}" height="44">
+      <img src="${R}assets/img/logo.webp" alt="${C.name}" width="${Math.round(LOGO.w * .7)}" height="${Math.round(LOGO.h * .7)}">
       <button class="menu-toggle drawer-close" type="button" data-drawer-close aria-label="Close menu" style="display:grid">${ic('xmark')}</button>
     </div>
-    <details><summary>About ${ic('chevron-down', 'chev')}</summary><a href="#about">About ${C.name}</a><a href="#surgeon">About Mr Shunil Roy</a><a href="#stories">Video testimonials</a><a href="#prices">Price guide</a></details>
-    <details><summary>Select Treatment ${ic('chevron-down', 'chev')}</summary>${drawerGroups(menuWomen)}<a class="drawer-all" href="#treatments">View all treatments</a></details>
-    <details><summary>Men ${ic('chevron-down', 'chev')}</summary><a href="#" data-dummy><b>Treatments for men</b></a>${drawerGroups(menuMen)}</details>
-    <a class="drawer-link" href="#prices">Price guide</a>
-    <a class="drawer-link" href="#clinic">Clinic tour</a>
-    <a class="drawer-link" href="#find">Contact</a>
-    <a class="btn btn-primary" ${bookFor('consultation')}>Book a consultation</a>
+    <details><summary>About us ${ic('chevron-down', 'chev')}</summary><a href="${h('about')}">About ${C.name}</a>${people.map(k => `<a href="${dr(k)}">${esc(D[k].name)}</a>`).join('')}</details>
+    <details><summary>Services ${ic('chevron-down', 'chev')}</summary>${drawerServices}<a class="drawer-all" href="${R}services/index.html">View all treatments</a></details>
+    <a class="drawer-link" href="${h('reviews')}">Testimonials</a>
+    <a class="drawer-link" href="${R}international-patients.html">International patients</a>
+    <a class="drawer-link" href="${h('tour')}">Take a tour</a>
+    <a class="drawer-link" href="${h('find')}">Contact us</a>
+    <a class="btn btn-primary" href="${h('book')}">Book appointment</a>
     <a class="btn btn-outline" href="tel:${C.tel}">${ic('phone')} ${C.phone}</a>
   </div>
 </div>`;
 }
 
-function foot() {
+function foot(R, isHome) {
+  const h = id => isHome ? `#${id}` : `${R}index.html#${id}`;
+  const keySvc = ['implants', 'root-canal', 'braces', 'aligners', 'smile-design', 'whitening', 'full-mouth-rehabilitation', 'kids'];
   return `
 <footer class="site-footer">
   <div class="wrap">
     <div class="footer-grid">
       <div class="footer-about">
-        <a class="brand" href="#top"><img src="${IMG.logo}" alt="${C.name}" width="${Math.round(LOGO.w * 54 / LOGO.h)}" height="54" loading="lazy" decoding="async"></a>
-        <p>${esc(C.tagline)}.</p>
-        <span class="footer-social">${social()}</span>
+        <a class="brand" href="${isHome ? '#top' : R + 'index.html'}"><img src="${R}assets/img/logo.webp" alt="${C.name}" width="${LOGO.w}" height="${LOGO.h}" loading="lazy" decoding="async"></a>
+        <p>A multispeciality dental practice in Kodambakkam, caring for Chennai families since ${C.founded}.</p>
+        <a class="text-link" href="${h('reviews')}">${stars(5)} ${reviews.rating} on Google</a>
       </div>
-      <div><h4>Treatments</h4><ul>${catOrder.map(c => `<li><a ${cLink(c)}>${esc(CAT[c].title)}</a></li>`).join('')}<li><a href="#" data-dummy>Treatments for men</a></li><li><a href="#treatments"><b>View all treatments</b></a></li></ul></div>
-      <div><h4>The clinic</h4><ul><li><a href="#about">About ${C.name}</a></li><li><a href="#surgeon">About Mr Shunil Roy</a></li><li><a href="#clinic">Why come to us</a></li><li><a href="#stories">Video testimonials</a></li><li><a href="#prices">Price guide</a></li><li><a href="#clinic">Clinic tour</a></li></ul></div>
+      <div><h4>Treatments</h4><ul>${keySvc.map(k => `<li><a href="${R}services/${k}.html">${esc(S[k].menu)}</a></li>`).join('')}<li><a href="${R}services/index.html"><b>All ${all.length} treatments</b></a></li></ul></div>
+      <div><h4>Our dentists</h4><ul>${[...leaders, ...team].map(k => `<li><a href="${R}doctors/${k}.html">${esc(D[k].name)}</a></li>`).join('')}</ul></div>
       <div><h4>Contact</h4><ul>
         <li>${C.address}</li>
         <li><a href="tel:${C.tel}">${C.phone}</a></li>
         <li><a href="mailto:${C.email}">${C.email}</a></li>
-        <li>Monday – Friday 10:30 AM – 4:30 PM<br>Saturday &amp; Sunday closed</li>
-        <li><a href="#find">Contact &amp; directions</a></li>
+        <li>Mon–Sat 8 AM – 9 PM<br>Sunday 9 AM – 1 PM</li>
+        <li>Emergency helpline 24/7</li>
+        <li><a href="${R}international-patients.html">International patients</a></li>
       </ul></div>
     </div>
     <div class="footer-bottom">
-      <span>© <span data-year>2026</span> ${C.name}. ${esc(C.legal)}</span>
+      <span>© <span data-year>2026</span> ${C.name}, Kodambakkam, Chennai.</span>
       <span>Concept website by <a href="https://www.chennaidigitalteam.com" target="_blank" rel="noopener">Chennai Digital Team</a></span>
     </div>
   </div>
 </footer>
-<button class="enquiry-float" type="button" data-enquiry>${ic('envelope')}<span>Quick enquiry</span></button>
+<a class="wa-float" href="${WA}" target="_blank" rel="noopener" aria-label="Message us on WhatsApp">${ic('whatsapp')}</a>
 <div class="mobile-bar">
   <a class="btn btn-outline" href="tel:${C.tel}">${ic('phone')} Call</a>
-  <a class="btn btn-primary" ${bookFor('consultation')}>Book consultation</a>
-</div>`;
+  <a class="btn btn-primary" href="${h('book')}">Book appointment</a>
+</div>
+<script src="${R}assets/site.js?v=${V.js}" defer></script>
+</body>
+</html>
+`;
 }
 
-/* ---------- sections ---------- */
-function moreTreatments() {
-  const items = [
-    ['c', 'anti-wrinkle', 'syringe'], ['c', 'medical', 'head'], ['c', 'dermal-fillers', 'drop'], ['t', 'lip-enhancement', 'lips'],
-    ['c', 'silhouette-soft', 'lift'], ['c', 'prp', 'tube'], ['t', 'hair-thinning', 'hair'], ['c', 'minor-surgery', 'scalpel'],
-    ['t', 'mole-removal', 'magnifier'], ['c', 'skincare', 'skin'], ['men', '', 'man'], ['consult', '', 'consult']
-  ].map(([kind, k, icon]) => {
-    if (kind === 'c') return [cLink(k), CAT[k].title, CAT[k].card, icon];
-    if (kind === 't') return [tLink(k), T[k].title, firstSentence(T[k].text), icon];
-    if (kind === 'men') return ['href="#" data-dummy', 'Treatments for Men', 'Anti-wrinkle, jawline, hair loss and sweating treatments for men.', icon];
-    return [bookFor('consultation'), 'Consultation', `A ${C.consultation} consultation with Mr Roy, with an accurate written price.`, icon];
-  });
+/* ---------- shared sections ---------- */
+function moreTreatments(R, slugs, title = 'Other treatments') {
   return `
-<section class="more" aria-labelledby="mt-title" data-carousel-box>
-  <div class="more-bg" aria-hidden="true" style="background-image:url(${px(6303609, 1920)})"></div>
+<section class="more" id="more-treatments" aria-labelledby="mt-title" data-carousel-box>
+  <div class="more-bg" aria-hidden="true"></div>
   <div class="wrap">
     <div class="more-head">
-      <h2 id="mt-title">Other treatments</h2>
+      <h2 id="mt-title">${title}</h2>
       <div class="car-nav">
         <button class="car-btn" type="button" data-car-prev aria-label="Previous treatments">${ic('chevron-left')}</button>
         <button class="car-btn" type="button" data-car-next aria-label="Next treatments">${ic('chevron-right')}</button>
       </div>
     </div>
-    <div class="car-track more-track" data-carousel data-autoplay="5000" tabindex="0" role="region" aria-label="Other treatments">
-      ${items.map(([attrs, t, p, icon]) => `<a class="more-item" ${attrs}><span class="more-ico">${iconSvg(icon)}</span><h3>${esc(t)}</h3><p>${esc(p)}</p></a>`).join('\n      ')}
+    <div class="car-track more-track" data-carousel data-autoplay="5000" tabindex="0" role="region" aria-label="${title}">
+      ${slugs.map(k => `<a class="more-item" href="${R}services/${k}.html"><span class="more-ico">${iconSvg(S[k].icon)}</span><h3>${esc(S[k].title)}</h3><p>${esc(S[k].card)}</p></a>`).join('\n      ')}
     </div>
   </div>
 </section>`;
 }
 
-function reviewsBand() {
+function reviewsBand(R) {
   return `
 <section class="reviews" id="reviews" aria-labelledby="rv-title" data-carousel-box>
-  <!-- SAMPLE reviews for the design preview — replace with the clinic's live Google reviews before launch (see tools/content.mjs) -->
+  <!-- PLACEHOLDER reviews for the concept site — replace with the clinic's live Google reviews before launch (see tools/content.mjs) -->
   <div class="wrap reviews-inner">
     <h2 id="rv-title" class="sr-only">What patients say about ${C.name} on Google</h2>
     <div class="rv-summary">
-      <img class="rv-logo" src="${IMG.icon180}" alt="" width="58" height="58">
+      <img class="rv-logo" src="${R}assets/img/icon-180.png" alt="" width="58" height="58" loading="lazy" decoding="async">
       <div>
         <b class="rv-clinic">${C.name}</b>
-        <div class="rv-score"><b>5.0</b>${stars(5)}</div>
-        <span class="rv-count">Google reviews</span>
+        <div class="rv-score"><b>${reviews.rating}</b>${stars(5)}</div>
+        <span class="rv-count">Based on ${reviews.count} reviews</span>
         <span class="rv-powered">powered by <span class="g-word"><span>G</span><span>o</span><span>o</span><span>g</span><span>l</span><span>e</span></span></span>
         <a class="rv-write" href="${reviews.writeUrl}" target="_blank" rel="noopener">review us on <svg viewBox="0 0 48 48" aria-hidden="true"><use href="#i-google"/></svg></a>
-        <span class="rv-sample">Design preview: sample reviews. Your live Google reviews appear here.</span>
       </div>
     </div>
     <div class="rv-carousel">
       <button class="rv-arrow rv-prev" type="button" data-car-prev aria-label="Previous reviews">${ic('chevron-left')}</button>
       <div class="car-track rv-track" data-carousel data-dots="rv-dots" data-autoplay="6500" tabindex="0" role="region" aria-label="Google reviews">
         ${reviews.items.map(r => `<article class="rv-card">
-          <header><span class="rv-av" style="background:${r.color}">${r.name[0]}</span><span class="rv-who"><b>${esc(r.name)}</b><span>${esc(r.when)}</span></span><svg class="rv-g" viewBox="0 0 48 48" aria-hidden="true"><use href="#i-google"/></svg></header>
+          <header><span class="rv-av" style="background:${r.color}">${r.name[0]}${r.guide ? '<span class="rv-guide" title="Local Guide"></span>' : ''}</span><span class="rv-who"><b>${esc(r.name)}</b><span>${r.when}</span></span><svg class="rv-g" viewBox="0 0 48 48" aria-hidden="true"><use href="#i-google"/></svg></header>
           ${stars(5)}
           <p class="rv-text" tabindex="0">${esc(r.text)}</p>
         </article>`).join('\n        ')}
@@ -278,163 +251,231 @@ function reviewsBand() {
 </section>`;
 }
 
-// contact details in a row, then the map edge to edge as a plain rectangle
-function findUs() {
+function findUs(R, intro = 'We are in Kodambakkam, west Chennai, with street parking in front of the clinic.') {
   return `
-<section class="find" id="find" aria-labelledby="find-title">
+<section class="section" id="find" aria-labelledby="find-title">
   <div class="wrap">
     <div class="section-head">
       <span class="label">Location</span>
-      <h2 id="find-title">Find us in Donnybrook</h2>
-      <p>A private clinic on Morehampton Road, Dublin 4, a short journey from the city centre.</p>
+      <h2 id="find-title">Find us</h2>
+      <p>${intro}</p>
     </div>
-    <div class="loc-strip">
-      <div><b>Address</b><span>${C.address}</span></div>
-      <div><b>Reception</b><a href="tel:${C.tel}">${C.phone}</a><a href="mailto:${C.email}">${C.email}</a></div>
-      <div><b>Opening hours</b><span class="open-badge" data-open-badge></span><span>Monday – Friday 10:30 AM – 4:30 PM<br>Saturday &amp; Sunday closed</span></div>
-      <div class="loc-cta"><a class="btn btn-primary" href="${DIRECTIONS}" target="_blank" rel="noopener">${ic('location-dot')} Get directions</a></div>
+    <div class="location">
+      <div class="map">
+        <iframe src="${MAP}" title="Map of Kodambakkam, Chennai" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
+      </div>
+      <div class="loc-info">
+        <div><b>Address</b><span>${C.address}</span></div>
+        <div><b>Reception</b><a href="tel:${C.tel}">${C.phone}</a></div>
+        <div><b>Email</b><a href="mailto:${C.email}">${C.email}</a></div>
+        <div><b>Opening hours</b><span class="open-badge" data-open-badge></span>
+          <table class="hours"><tbody>
+            ${C.hours.map(([d, n, t]) => `<tr data-day="${d}"><td>${n}</td><td>${t}</td></tr>`).join('\n            ')}
+          </tbody></table>
+        </div>
+        <a class="btn btn-outline" href="${DIRECTIONS}" target="_blank" rel="noopener">Get directions</a>
+      </div>
     </div>
-  </div>
-  <div class="map">
-    <iframe data-src="${MAP}" title="Map showing ${C.name}, ${C.address}" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
   </div>
 </section>`;
 }
 
-const faqList = items => `<div class="faq">
-        ${items.map(([q, a]) => `<details><summary>${esc(q)} ${ic('plus')}</summary><p>${esc(a)}</p></details>`).join('\n        ')}
-      </div>`;
+const cta = (R, title, text, bookHref) => `
+    <div class="cta">
+      <div><h2>${title}</h2><p>${text}</p></div>
+      <div class="actions">
+        <a class="btn btn-primary" href="${bookHref}">Book appointment</a>
+        <a class="btn btn-outline" href="tel:${C.tel}">${ic('phone')} ${C.phone}</a>
+      </div>
+    </div>`;
 
-function bookForm(prefix) {
-  return `<form class="book-form" id="${prefix}Form" data-book-form novalidate>
-        <div class="field" data-field="name"><label for="${prefix}-name">Full name</label><input id="${prefix}-name" name="name" autocomplete="name" required><span class="err" role="alert"></span></div>
-        <div class="field" data-field="phone"><label for="${prefix}-phone">Phone number</label><input id="${prefix}-phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" placeholder="087 123 4567" required><span class="err" role="alert"></span></div>
-        <div class="field field--full"><label for="${prefix}-service">Treatment</label><select id="${prefix}-service" name="service">${serviceOptions('Not sure yet, please advise')}</select></div>
-        <div class="field" data-field="date"><label for="${prefix}-date">Preferred date</label><input id="${prefix}-date" name="date" type="date" required><span class="err" role="alert"></span></div>
-        <div class="field"><label for="${prefix}-email">Email <span class="opt">(optional)</span></label><input id="${prefix}-email" name="email" type="email" autocomplete="email"></div>
-        <fieldset class="field field--full" data-field="slot">
-          <legend>Preferred time</legend>
-          <div class="slots">
-            <input type="radio" name="slot" id="${prefix}-s-m" value="Morning"><label for="${prefix}-s-m">Morning<small>10:30 AM – 12:30 PM</small></label>
-            <input type="radio" name="slot" id="${prefix}-s-a" value="Afternoon"><label for="${prefix}-s-a">Afternoon<small>12:30 – 4:30 PM</small></label>
-          </div>
-          <span class="err" role="alert"></span>
-        </fieldset>
-        <div class="field field--full"><label for="${prefix}-note">Message <span class="opt">(optional)</span></label><textarea id="${prefix}-note" name="note" placeholder="What would you like to improve, or any questions for Mr Roy"></textarea></div>
-        <div class="form-foot">
-          <p>We will call you to confirm. Your details are only used to arrange your consultation and are kept confidential.</p>
-          <button class="btn btn-primary" type="submit">Request consultation</button>
+const tCard = (R, k, sizes = '(max-width: 640px) calc(100vw - 40px), (max-width: 900px) calc(50vw - 30px), 360px') => `<a class="t-card" href="${R}services/${k}.html">
+        <div class="t-card-img">${svcImg(R, S[k], sizes)}</div>
+        <div class="t-card-body">
+          <h3>${esc(S[k].title)}</h3>
+          <p>${esc(S[k].card)}</p>
+          <div class="t-card-foot"><span class="price">${S[k].priceText ? esc(S[k].priceText) : `From <b>${S[k].price}</b>`}</span><span class="text-link">Details ${ic('arrow-right')}</span></div>
         </div>
-      </form>`;
-}
+      </a>`;
 
-/* ==========================================================================
-   The front page
-   ========================================================================== */
+const drCard = (R, k, sizes = '(max-width: 640px) calc(100vw - 40px), (max-width: 900px) calc(50vw - 30px), 360px') => {
+  const d = D[k];
+  return `<a class="dr-card" href="${R}doctors/${k}.html">
+        <div class="dr-photo${d.round ? ' dr-photo--round' : ''}">${drImg(R, d, sizes)}</div>
+        <h3>${esc(d.name)}</h3>
+        <span class="dr-role">${esc(d.role)}</span>
+        <span class="dr-quals">${esc(d.quals)}${d.speciality ? ` (${esc(d.speciality)})` : ''}</span>
+      </a>`;
+};
+
+const crumbs = (R, trail) => `<nav class="crumbs" aria-label="Breadcrumb"><a href="${R}index.html">Home</a>${trail.map(([t, u]) => `${ic('chevron-right')}${u ? `<a href="${u}">${esc(t)}</a>` : `<span>${esc(t)}</span>`}`).join('')}</nav>`;
+
+/* ---------- home ---------- */
 function home() {
-  const cards = [
-    ['c', 'anti-wrinkle'], ['c', 'dermal-fillers'], ['t', 'lip-enhancement'], ['c', 'silhouette-soft'],
-    ['c', 'prp'], ['c', 'minor-surgery'], ['c', 'medical'], ['c', 'skincare']
-  ];
-  const card = ([kind, k]) => {
-    const c = kind === 'c' ? CAT[k] : { ...CAT[T[k].cat], title: T[k].title, card: 'Subtle, natural-looking volume and definition for the lips.', photo: T[k].photo, pos: T[k].pos, price: T[k].price, icon: 'lips' };
-    return `<a class="svc-card" ${kind === 'c' ? cLink(k) : tLink(k)}>
+  const R = '';
+  const ld = `\n<script type="application/ld+json">${JSON.stringify({
+    '@context': 'https://schema.org', '@type': 'Dentist', name: C.name, slogan: C.tagline, logo: 'assets/img/logo.png', image: 'assets/img/clinic-room.webp',
+    telephone: C.phone, email: C.email, priceRange: '₹₹', currenciesAccepted: 'INR', foundingDate: String(C.founded),
+    address: { '@type': 'PostalAddress', streetAddress: C.street, addressLocality: 'Chennai', addressRegion: 'Tamil Nadu', postalCode: C.postcode, addressCountry: 'IN' },
+    openingHoursSpecification: [
+      { '@type': 'OpeningHoursSpecification', dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'], opens: '08:00', closes: '21:00' },
+      { '@type': 'OpeningHoursSpecification', dayOfWeek: 'Sunday', opens: '09:00', closes: '13:00' }]
+  })}</script>`;
+  const people = leaders.length + team.length;
+  // treatment card: photo, icon badge on the photo's edge, short text, price
+  // title/text/photo override the treatment's own where the card covers more than one page
+  const card = (k, { title = S[k].title, text = S[k].card, photo = S[k] } = {}) => `<a class="svc-card" href="services/${k}.html">
         <div class="svc-card-media">
-          <div class="svc-card-img">${photo(c.photo, 600, '', { pos: c.pos })}</div>
-          <span class="svc-card-badge">${iconSvg(c.icon)}</span>
+          <div class="svc-card-img">${svcImg(R, { ...photo, alt: '' }, '(max-width: 640px) calc(50vw - 26px), (max-width: 900px) calc(50vw - 30px), 280px')}</div>
+          <span class="svc-card-badge">${iconSvg(S[k].icon)}</span>
         </div>
         <div class="svc-card-body">
-          <h3>${esc(c.title)}</h3>
-          <p>${esc(c.card)}</p>
-          <div class="svc-card-foot"><span>${priceHtml(c.price || c.priceText)}</span><span class="text-link">Learn more ${ic('arrow-right')}</span></div>
+          <h3>${esc(title)}</h3>
+          <p>${esc(text)}</p>
+          <div class="svc-card-foot"><span>${S[k].priceText ? esc(S[k].priceText) : `From <b>${S[k].price}</b>`}</span><span class="text-link">Learn more ${ic('arrow-right')}</span></div>
         </div>
       </a>`;
-  };
-  const finder = [
-    ['Frown lines & forehead lines', 7581589, 'center 30%', 'vertical-frown-lines', 'Anti-Wrinkle Treatment', 'Lines between the brows and across the forehead are caused by the muscles we use to frown and raise our eyebrows. Relaxing those muscles with a precise, low dose softens the lines within two weeks, while you keep natural expression.', [['Treatment time', '15–20 minutes'], ['Results', 'In 3–14 days'], ['Fee', 'From €250']]],
-    ['Thin lips or lost volume', 34775253, 'center 40%', 'lip-enhancement', 'Lip Enhancement & Dermal Fillers', 'Hyaluronic acid filler restores volume to the lips and cheeks and softens deep folds. Mr Roy works with your natural proportions for a subtle result, with no overfilled look.', [['Treatment time', '30–45 minutes'], ['Results', 'Immediate'], ['Fee', 'From €400']]],
-    ['Jowls & a sagging jawline', 7010952, 'center 30%', 'jawline-contouring', 'Silhouette Soft Lift', 'Dissolvable Silhouette Soft sutures lift the jowls and redefine the jawline straight away, then stimulate new collagen for up to 18 months. No incisions and no general anaesthetic.', [['Procedure time', '45–60 minutes'], ['Results', 'Immediate'], ['Fee', 'From €1,500']]],
-    ['Thinning hair', 30809948, 'center 40%', 'hair-thinning', 'PRP for Hair Thinning', 'Growth factors from your own platelets, injected into the scalp, strengthen weak hair follicles and thicken thinning hair. A natural treatment for men and women.', [['Course', '3 sessions'], ['Results', 'In 3–6 months'], ['Fee', 'From €500']]],
-    ['A mole, cyst or lump', 7446661, 'center 45%', 'mole-removal', 'Minor Surgery', 'Cysts, lipomas, moles and skin tags are removed under local anaesthetic by a Fellow of the Royal College of Surgeons. No GP referral and no HSE waiting list; same-day treatment is also available.', [['Procedure time', '20–45 minutes'], ['Anaesthetic', 'Local'], ['Fee', 'From €300']]],
-    ['Excessive sweating', 16131210, 'center 40%', 'excessive-sweating', 'Medical Treatment for Sweating', 'Fine injections into the skin switch off overactive sweat glands in the underarms or forehead, keeping you dry for six to nine months.', [['Treatment time', '20–30 minutes'], ['Lasts', '6–9 months'], ['Fee', '€600–€800']]]
+  // the rest of the treatments, as quick links under the four main cards
+  const also = ['smile-design', 'crowns-bridges', 'dentures', 'gum-care', 'kids', 'oral-surgery', 'sedation-dentistry', 'laser-dentistry', 'checkups', 'teeth-cleaning'];
+  const promises = [
+    ['Prices in writing', 'An itemised estimate after your examination. Nothing starts until you have agreed to it.'],
+    ['The same dentist every visit', 'Someone who knows your history, not a new face each time.'],
+    ['Our own dental laboratory', 'Crowns, bridges and dentures are made on site, so you need fewer visits.'],
+    ['EMI options', 'Monthly payments for larger treatments such as implants, braces and clear aligners.']
   ];
-  const tv = testimonials;
-  const vt = (t, big) => `<a class="vt${big ? ' vt--big' : ''}" href="https://www.youtube.com/watch?v=${t.id}" target="_blank" rel="noopener">
-        <span class="vt-thumb"><img src="https://i.ytimg.com/vi/${t.id}/hqdefault.jpg" alt="" loading="lazy" decoding="async"><span class="vt-play">${ic('play')}</span></span>
-        <span class="vt-body"><b>${esc(t.title)}</b><span>Patient testimonial · Watch on YouTube</span></span>
-      </a>`;
-  const still = (k, alt, cap) => `<figure><img src="${S[k]}" alt="${esc(alt)}" loading="lazy"><figcaption>${esc(cap)}</figcaption></figure>`;
+  const equipment = [
+    ['Low-dose digital X-rays', 'Images appear on screen in seconds, so we can show you exactly what we see.'],
+    ['3D CBCT scans for implants', 'The position, any bone graft and the price are settled before treatment starts.'],
+    ['Intraoral scanner', 'A quick digital scan replaces impression trays for crowns, veneers and aligners.'],
+    ['Magnification for root canals', 'Rotary instruments under magnification, for cleaner canals and shorter visits.'],
+    ['Hospital-grade sterilisation', 'A Class B autoclave, and instruments opened from sealed pouches in front of you.']
+  ];
+  // PLACEHOLDER patient stories for the concept site (fictional), shown with the Google rating from content.mjs
+  const stories = [
+    ['Nithya S.', 'Root canal with Dr. Arjun Prakash', '#0a7cbc', 'I had put off a root canal for two years. Dr. Arjun finished it in one sitting, and all I felt was a little pressure.'],
+    ['Karthik R.', 'Implants for his mother, with Dr. Vikram Sundaram', '#1f9d63', 'My mother is 68 and nervous of dentists. They explained every step in Tamil and wrote the cost down before touching anything.'],
+    ['Divya M.', 'Mother of a six-year-old patient', '#c2410c', 'My daughter was frightened after a bad experience elsewhere. Dr. Meera let her count her own teeth first. Now she asks when she can go back.']
+  ];
+  const finder = [
+    ['Toothache or sensitivity', 'svc-checkups', '40% 50%', 'root-canal', 'Pain that lingers after something hot or cold, or wakes you at night, usually means the nerve inside the tooth is inflamed. A bite test and a digital X-ray show which tooth it is, and whether a filling is enough or it needs a root canal.', [['Treatment time', '60–90 minutes'], ['Visits', '1–2 visits'], ['Fee', `From ${S['root-canal'].price}`]]],
+    ['Chipped or broken tooth', 'svc-emergency', '55% 40%', 'emergency', 'A small chip can usually be repaired with tooth-coloured bonding in one visit; a larger break may need a crown. Keep any broken piece, avoid chewing on that side, and come in the same day.', [['Availability', 'Same-day slots'], ['Helpline', 'Answered 24/7'], ['Fee', S.emergency.priceText]]],
+    ['Missing teeth', 'svc-implants', '50% 55%', 'implants', 'A gap lets the neighbouring teeth drift and the jawbone shrink. An implant replaces the root as well as the tooth, so the new tooth is fixed in place and the bone stays healthy.', [['Treatment time', 'About 60 minutes to place'], ['Visits', '2–3 visits over 3 months'], ['Fee', `From ${S.implants.price} with crown`]]],
+    ['Crooked or gappy teeth', 'svc-aligners', '50% 40%', 'braces', 'Crowding, gaps and bite problems can be corrected at any age. A digital scan shows how your teeth would move before you choose between braces and clear aligners.', [['Treatment time', '6–24 months'], ['Visits', 'Reviews every 4–8 weeks'], ['Fee', `From ${S.braces.price}`]]],
+    ['Stained or yellow teeth', 'svc-whitening', '78% 50%', 'whitening', 'Stains from tea, coffee and turmeric respond well to professional whitening. We check your teeth first and tell you honestly how much lighter they are likely to get.', [['Treatment time', 'About 75 minutes'], ['Visits', '1 visit'], ['Fee', `From ${S.whitening.price}`]]],
+    ['Bleeding gums', 'svc-gum-care', '62% 35%', 'gum-care', 'Bleeding when you brush is the earliest sign of gum disease, and the stage at which it can be fully reversed. A deep clean below the gumline usually settles it within a few weeks.', [['Treatment time', '45–60 minutes'], ['Visits', '1–3 visits'], ['Fee', `From ${S['gum-care'].price}`]]]
+  ];
 
-  return `
+  return head({ R, title: `${C.name} | Multispeciality Dental Clinic in Kodambakkam, Chennai`, desc: `${C.name}, Kodambakkam, Chennai — caring for families since ${C.founded}. Implants, root canals, braces and aligners, smile makeovers, dentures, laser and children's dentistry. Book online or call ${C.phone}.`, ld, preload: 'assets/img/hero-consult.webp' }) +
+    chrome(R, true) + `
 <main id="main">
 
-<!-- top of the page, as on Origin Dental: the clinic tour edge to edge, with nothing over it -->
-<section class="hero-video" id="tour" aria-labelledby="hero-title">
-  <h1 id="hero-title" class="sr-only">${C.name}, ${C.area}: natural-looking aesthetic treatments and private minor surgery, performed personally by ${DR.name}, FRCS (Edinburgh)</h1>
-  <video id="tourVideo" data-video data-after-load muted loop playsinline preload="none" poster="${IMG.poster}" aria-label="A walk through ${C.name}: the house on Morehampton Road, reception, treatment rooms and Mr Roy's consulting room"></video>
-</section>
-
-<section class="leaders" aria-labelledby="ld-title">
-  <div class="wrap leaders-grid">
-    <div class="leaders-copy">
-      <h2 id="ld-title" class="sr-only">Our medical director and our clinic</h2>
-      <p><span class="text-full">${C.name} in ${C.area} is ${esc(C.tagline.replace("Ireland's", 'Ireland’s'))}. Every consultation, treatment and procedure is carried out personally by our medical director, the surgeon ${DR.name}.</span><span class="text-short">Aesthetic and minor surgical treatments in Donnybrook, Dublin 4, all performed by surgeon ${DR.name}.</span></p>
-      <div class="years">
-        <svg class="years-ico" viewBox="0 0 96 80" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 6C2 24 2 56 14 74M82 6c12 18 12 50 0 68"/><path d="M33 20l30 40M63 20L52 34M44 46L33 60" stroke-width="3.4"/><path d="M68 12L28 68" stroke-width="1.6"/></svg>
-        <div><b>20+ years</b><span>of aesthetic medicine with Mr Roy</span></div>
+<section class="home-hero" aria-labelledby="hero-title">
+  <div class="wrap hero-grid">
+    <div class="hero-copy">
+      <span class="hero-pill">${ic('location-dot')} Multispeciality dental clinic · ${C.area}</span>
+      <h1 id="hero-title">Dental care for your whole family, <span>with every price agreed before we begin.</span></h1>
+      <p class="lead">Six specialist dentists and our own dental laboratory under one roof, caring for Chennai families since ${C.founded}. Every option explained, every estimate in writing.</p>
+      <div class="actions">
+        <a class="btn btn-primary btn-lg" href="#book">Book an appointment ${ic('arrow-right')}</a>
+        <a class="btn btn-outline btn-lg btn-wa-outline" href="${WA}" target="_blank" rel="noopener">${ic('whatsapp')} Ask on WhatsApp</a>
       </div>
+      <dl class="hero-trust">
+        <div><dt>Google rating</dt><dd>${reviews.rating} ${stars(5)}</dd></div>
+        <div><dt>Years in Chennai</dt><dd>25+</dd></div>
+        <div><dt>Specialists</dt><dd>${people}</dd></div>
+        <div><dt>Languages</dt><dd>6</dd></div>
+      </dl>
     </div>
-    <div class="leaders-docs">
-      <a class="leader" href="#surgeon">
-        <span class="leader-photo"><img src="${DR.photo}" alt="Portrait of ${DR.name}" style="object-position:66% 10%" decoding="async"></span>
-        <h3>${DR.name}</h3>
-        <span class="leader-quals">M.B.B.S · FRCS (Edinburgh)<br>Medical Director</span>
-      </a>
-      <a class="leader" href="#clinic">
-        <span class="leader-photo"><img src="${S.exterior}" alt="The clinic's red-brick house on Morehampton Road" style="object-position:30% center" decoding="async"></span>
-        <h3>Our clinic</h3>
-        <span class="leader-quals">12 Morehampton Road<br>Donnybrook, Dublin 4</span>
-      </a>
+    <div class="hero-media">
+      <img src="assets/img/hero-consult.webp" alt="A dentist showing a patient how to brush, using a teeth model" width="854" height="480" fetchpriority="high">
+      <div class="hero-chip hero-chip--a"><span class="hero-chip-ic hero-chip-ic--green">${ic('check')}</span><span><b>Written estimate</b>before any treatment</span></div>
+      <div class="hero-chip hero-chip--b"><span class="hero-chip-ic">${ic('clock')}</span><span><b>Same-day slots</b>for pain and emergencies</span></div>
     </div>
   </div>
 </section>
 
 <div class="wrap qb-wrap">
-  <form class="quick-book" id="quickBook" aria-label="Start a booking">
+  <form class="quick-book" id="quickBook" action="index.html#book" method="get" aria-label="Start a booking">
     <div class="qb-field"><label for="qb-service">Treatment</label><select id="qb-service" name="service">${serviceOptions('Not sure yet')}</select></div>
+    <div class="qb-field"><label for="qb-doctor">Dentist</label><select id="qb-doctor" name="doctor">${doctorOptions('Any dentist')}</select></div>
     <div class="qb-field"><label for="qb-date">Preferred date</label><input id="qb-date" name="date" type="date"></div>
-    <div class="qb-field"><label for="qb-slot">Time of day</label><select id="qb-slot" name="slot"><option value="">Any time</option><option>Morning</option><option>Afternoon</option></select></div>
-    <button class="btn btn-primary" type="submit">Continue booking ${ic('arrow-right')}</button>
+    <button class="btn btn-primary" type="submit">Check availability ${ic('arrow-right')}</button>
   </form>
 </div>
 
-<section class="intro" aria-label="${C.name} in brief">
+<section class="section" id="treatments" aria-labelledby="tr-title">
   <div class="wrap">
-    <p class="statement">One surgeon. Every treatment. <span>Mr Roy examines you, explains your options honestly and performs every procedure himself, under local anaesthetic and with little or no downtime.</span></p>
-    <dl class="figures">
-      <div><dt>Surgical fellowship (FRCS) awarded</dt><dd>1997</dd></div>
-      <div><dt>Years in aesthetic medicine</dt><dd>20+</dd></div>
-      <div><dt>Treatments and procedures</dt><dd>${Object.keys(T).length}</dd></div>
-      <div><dt>Silhouette Soft first in Ireland</dt><dd>2012</dd></div>
+    <div class="head-split">
+      <div><span class="label">Treatments</span><h2 id="tr-title">General, specialist and cosmetic dentistry in one clinic</h2></div>
+      <div><p>All ${all.length} treatments are carried out in one clinic, with one patient record shared between our dentists. Starting prices are shown upfront, and your estimate is itemised in writing.</p></div>
+    </div>
+    <div class="svc-grid">
+      ${card('implants')}
+      ${card('root-canal')}
+      ${card('braces', { title: 'Braces & Clear Aligners', text: 'Straighter teeth for children and adults, with a 3D preview before you start.', photo: S.aligners })}
+      ${card('whitening')}
+    </div>
+    <div class="also">
+      <h3>Also at ${C.name}</h3>
+      <ul class="chips">${also.map(k => `<li><a href="services/${k}.html">${esc(S[k].menu)}</a></li>`).join('')}</ul>
+      <a class="text-link" href="services/index.html">All ${all.length} treatments ${ic('arrow-right')}</a>
+    </div>
+    <div class="urgent urgent--alert">
+      <span class="urgent-ic">${ic('plus')}</span>
+      <div><h3>In pain right now?</h3><p>We keep same-day emergency slots every day, and the helpline is answered 24 hours a day.</p></div>
+      <div class="actions">
+        <a class="btn btn-white" href="tel:${C.tel}">${ic('phone')} Call ${C.phone}</a>
+        <a class="btn btn-ghost-white" href="services/emergency.html">Emergency care</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="why" id="about" aria-labelledby="ab-title">
+  <div class="wrap">
+    <div class="why-grid">
+      <figure class="why-photo">
+        <img src="assets/img/clinic-suite.webp" alt="A bright treatment room at ${C.name} with a dental chair beside the window" width="1200" height="800" loading="lazy" decoding="async">
+        <figcaption class="why-quote">
+          <blockquote>“A fixed tooth changes how someone eats, talks and smiles. I want every patient to know exactly what that will take before we begin.”</blockquote>
+          <a class="why-who" href="doctors/vikram-sundaram.html">${drThumb(R, D['vikram-sundaram'], 40)}<span><b>Dr. Vikram Sundaram</b>Lead Implantologist</span></a>
+        </figcaption>
+      </figure>
+      <div class="why-copy">
+        <span class="label">Why families choose us</span>
+        <h2 id="ab-title">A two-chair practice in ${C.founded}. Six specialists today.</h2>
+        <p>${C.name} opened in ${C.founded} in Kodambakkam. Today our dentists and our own dental laboratory work from the same clinic and share one patient record, so whoever treats you always has your full history.</p>
+        <ol class="promises">
+          ${promises.map(([t, p], i) => `<li><span class="num">0${i + 1}</span><h3>${t}</h3><p>${p}</p></li>`).join('\n          ')}
+        </ol>
+      </div>
+    </div>
+    <dl class="why-stats">
+      <div><dt>Caring for Chennai since</dt><dd>${C.founded}</dd></div>
+      <div><dt>Specialist dentists</dt><dd>${people}</dd></div>
+      <div><dt>Treatments under one roof</dt><dd>${all.length}</dd></div>
+      <div><dt>Open late, Monday to Saturday</dt><dd>9 PM</dd></div>
     </dl>
   </div>
 </section>
 
-<section class="section section--soft" id="treatments" aria-labelledby="tr-title" data-carousel-box>
-  <div class="wrap">
-    <div class="head-split">
-      <div><span class="label">Treatments</span><h2 id="tr-title">Non-surgical, minimally invasive and minor surgical treatments</h2></div>
-      <div><p>From a single anti-wrinkle area to a Silhouette Soft lift, each treatment is planned around your face and priced in writing after your consultation.</p><div class="svc-nav"><a class="text-link" href="#treatments">View all treatments ${ic('arrow-right')}</a><span class="car-nav"><button class="car-btn car-btn--light" type="button" data-car-prev aria-label="Previous treatments">${ic('chevron-left')}</button><button class="car-btn car-btn--light" type="button" data-car-next aria-label="Next treatments">${ic('chevron-right')}</button></span></div></div>
+<section class="section section--soft" id="dentists" aria-labelledby="dr-title">
+  <div class="wrap team-layout">
+    <div class="team-intro">
+      <span class="label">Our dentists</span>
+      <h2 id="dr-title">Meet the specialists who will treat you</h2>
+      <p>You will see the same dentist at every visit. Consultations in Tamil, English, Hindi, Telugu, Kannada and Malayalam.</p>
+      <ul class="md-list" id="leaders" aria-label="Managing directors">
+        ${leaders.map(k => `<li><a class="md-card" href="doctors/${k}.html"><img src="assets/img/${D[k].image}-120.webp" alt="" width="64" height="64" loading="lazy" decoding="async"><span><small>Managing Director</small><b>${esc(D[k].name)}</b>${esc(D[k].quals)} · ${esc(D[k].speciality)}</span></a></li>`).join('\n        ')}
+      </ul>
     </div>
-    <div class="car-track svc-cards" data-carousel tabindex="0" role="region" aria-label="Treatments">
-      ${cards.map(card).join('\n      ')}
-    </div>
-    <div class="urgent">
-      <div><h3>A lump, cyst or mole that worries you?</h3><p>Private minor surgery in Dublin with no HSE waiting list and no referral needed. Same-day treatment is also available.</p></div>
-      <div class="actions">
-        <a class="btn btn-primary" href="tel:${C.tel}">${ic('phone')} Call ${C.phone}</a>
-        <a class="btn btn-outline" ${cLink('minor-surgery')}>Minor surgery</a>
-      </div>
+    <div class="team">
+      ${team.map(k => `<a class="member" href="doctors/${k}.html">
+        <div class="member-photo">${drImg(R, D[k], '(max-width: 640px) calc(50vw - 27px), (max-width: 900px) calc(50vw - 30px), 200px')}</div>
+        <h3>${esc(D[k].name)}</h3>
+        <span class="member-role">${esc(D[k].role)}</span>
+        <span class="member-meta">${D[k].facts[0][1]}<span class="hide-sm"> · ${D[k].facts[1][1]}</span></span>
+      </a>`).join('\n      ')}
     </div>
   </div>
 </section>
@@ -443,242 +484,424 @@ function home() {
   <div class="wrap finder" data-tabs>
     <div class="finder-side">
       <span class="label">Not sure what you need?</span>
-      <h2 id="fd-title">Start with what you would like to change</h2>
-      <p>Choose the concern closest to yours. At your consultation Mr Roy will examine you and advise honestly, including when a treatment will not help.</p>
+      <h2 id="fd-title">Start with what you are feeling</h2>
+      <p>Choose the problem closest to yours. If you are still unsure, book a consultation and we will advise you.</p>
     </div>
-    <div class="finder-tabs" role="tablist" aria-label="Common concerns" aria-orientation="vertical">
-      ${finder.map(([t, img, pos], i) => `<button type="button" role="tab" id="ft-${i}" aria-controls="fp-${i}" aria-selected="${i === 0}"${i ? ' tabindex="-1"' : ''}><span>${t}</span><span class="ft-pic"><img src="${px(img, 200)}" alt="" loading="lazy" decoding="async" style="object-position:${pos}"></span></button>`).join('\n      ')}
+    <div class="finder-tabs" role="tablist" aria-label="Common dental problems" aria-orientation="vertical">
+      ${finder.map(([t, img, pos], i) => `<button type="button" role="tab" id="ft-${i}" aria-controls="fp-${i}" aria-selected="${i === 0}"${i ? ' tabindex="-1"' : ''}><span>${t}</span><span class="ft-pic"><img src="assets/img/${img}-240.webp" alt="" width="54" height="54" loading="lazy" decoding="async" style="object-position:${pos}"></span></button>`).join('\n      ')}
     </div>
     <div class="finder-panels">
-      ${finder.map(([, , , k, h, text, facts], i) => `<div class="finder-panel" role="tabpanel" id="fp-${i}" aria-labelledby="ft-${i}" tabindex="0">
+      ${finder.map(([, , , k, text, facts], i) => {
+        const d = D[S[k].doctor];
+        return `<div class="finder-panel" role="tabpanel" id="fp-${i}" aria-labelledby="ft-${i}" tabindex="0">
         <span class="label">Likely treatment</span>
-        <h3>${esc(h)}</h3>
-        <p>${esc(text)}</p>
+        <h3>${esc(k === 'braces' ? 'Braces & Clear Aligners' : S[k].title)}</h3>
+        <p>${text}</p>
         <dl class="facts">${facts.map(([a, b]) => `<div><dt>${a}</dt><dd>${b}</dd></div>`).join('')}</dl>
-        <div class="finder-doc"><img src="${DR.photo}" alt="" loading="lazy" decoding="async"><span><b>${DR.name}</b>Performs every treatment personally</span></div>
+        <div class="finder-doc">${drThumb(R, d, 44)}<span><b>${esc(d.name)}</b>${esc(d.role)}</span></div>
         <div class="actions">
-          <a class="btn btn-primary" ${bookFor(k)}>Book a consultation</a>
-          <a class="btn btn-outline" ${tLink(k)}>About ${esc(lower(T[k].title))}</a>
+          <a class="btn btn-primary" href="index.html?service=${k}#book">Book for this</a>
+          <a class="btn btn-outline" href="services/${k}.html">About ${esc((k === 'braces' ? 'braces & clear aligners' : S[k].title).replace(/^(\w)/, c => c.toLowerCase()))}</a>
         </div>
-      </div>`).join('\n      ')}
+      </div>`;
+      }).join('\n      ')}
     </div>
   </div>
 </section>
 
-<section class="section" id="about" aria-labelledby="ab-title">
-  <div class="wrap">
-    <div class="about-photo"><img src="${IMG.portrait}" alt="A woman with smooth, natural-looking skin" loading="lazy" decoding="async"></div>
-    <div class="about-body">
-      <div class="about-card">
-        <span class="label">Our commitment</span>
-        <h2 id="ab-title">A private clinic, with a surgeon's standards</h2>
-        <p>Our first commitment is an honest, trusting relationship with every patient. With over 20 years of experience, Mr Roy brings a surgeon's training and a genuine passion for the highest standard of care, and every treatment plan is tailored to you.</p>
-        <figure class="pull">
-          <blockquote>“Our primary commitment is to foster an honest, trusting relationship with each and every patient.”</blockquote>
-          <figcaption><img src="${S['roy-desk']}" alt="" width="46" height="46" style="object-position:40% center"><span><b>${C.name}</b>Our commitment to you</span></figcaption>
-        </figure>
-      </div>
-      <div class="about-side">
-        <ul class="ticks">
-          <li>${ic('check')}<span>Every treatment performed by a Fellow of the Royal College of Surgeons of Edinburgh</span></li>
-          <li>${ic('check')}<span>Procedures under local anaesthetic, never a general anaesthetic</span></li>
-          <li>${ic('check')}<span>A discreet, confidential clinic in a period house in Donnybrook</span></li>
-          <li>${ic('check')}<span>An accurate written price after your consultation</span></li>
-        </ul>
-        <a class="text-link" href="#clinic">See inside the clinic ${ic('arrow-right')}</a>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section class="section section--flush" id="clinic" aria-labelledby="cl-title">
-  <div class="wrap">
-    <div class="panel tech">
-      <div class="tech-media">
-        <div class="video-wrap">
-          <!-- anti-wrinkle treatment clip: Pexels 7581709, free licence, chosen by the client -->
-          <video data-src="assets/media/clinic.mp4" data-src-phone="assets/media/clinic-phone.mp4" data-embed="clinic-data" data-video muted loop playsinline preload="none" poster="${IMG.clinicPoster}" aria-label="A precise anti-wrinkle injection beside the eye, with the patient relaxed"></video>
-          <button class="video-btn" type="button">${ic('play')}${ic('pause').replace('aria-hidden="true"', 'aria-hidden="true" hidden')}<span data-label>Play the clip</span></button>
-        </div>
-        <div class="tech-stills">
-          ${still('reception', 'Reception', 'Reception')}
-          ${still('room-fireplace', 'A treatment room with a period fireplace', 'Treatment room')}
-          ${still('rcs-certificate', "Mr Roy's Fellowship certificate from the Royal College of Surgeons of Edinburgh", 'FRCS (Edinburgh)')}
-          ${still('lounge', 'The consultation lounge', 'Consultation lounge')}
-          ${still('room-window', 'The procedure room', 'Procedure room')}
-          ${still('roy-desk', 'Mr Roy at his desk', "Mr Roy's consulting room")}
-        </div>
-      </div>
-      <div class="tech-copy">
-        <span class="label">Inside the clinic</span>
-        <h2 id="cl-title">Why patients choose ${C.name}</h2>
-        <p>A calm, private house on Morehampton Road, and one surgeon who knows your face and your history.</p>
-        <ol class="tech-list">
-          <li><span class="num">01</span><div><h3>A surgeon for every treatment</h3><p>Mr Roy personally performs every treatment and procedure. You will never be handed over to a junior practitioner.</p></div></li>
-          <li><span class="num">02</span><div><h3>Natural-looking results</h3><p>Each treatment is carried out with care and precision, to enhance your features subtly rather than change them.</p></div></li>
-          <li><span class="num">03</span><div><h3>Little or no downtime</h3><p>Minimally invasive techniques under local anaesthetic, so most people return to their day straight away.</p></div></li>
-          <li><span class="num">04</span><div><h3>Tailored to you</h3><p>Plans are built around your goals and your anatomy, with honest advice about what will and will not help.</p></div></li>
-          <li><span class="num">05</span><div><h3>Discreet and confidential</h3><p>Many of Mr Roy's patients are public figures. Your visit and your records stay private.</p></div></li>
-        </ol>
-      </div>
-    </div>
-  </div>
-</section>
-${moreTreatments()}
-
-<section class="section" id="surgeon" aria-labelledby="sg-title">
-  <div class="wrap split split--top surgeon">
-    <div class="surgeon-photo"><img src="${DR.photo}" alt="${esc(DR.photoAlt)}" loading="lazy" decoding="async"></div>
-    <div>
-      <span class="label">Your surgeon</span>
-      <h2 id="sg-title">${DR.name}</h2>
-      <span class="surgeon-quals">${DR.quals} · ${DR.role}</span>
-      <p class="surgeon-lead">${esc(DR.lead)}</p>
-      <ol class="timeline timeline--compact">
-        ${DR.timeline.slice(0, 5).map(([w, b, s]) => `<li><span class="when">${w}</span><div><b>${esc(b)}</b><span>${esc(s)}</span></div></li>`).join('\n        ')}
-      </ol>
-      <div class="actions" style="margin-top:26px">
-        <a class="btn btn-primary" href="#surgeon" data-qv="roy">Read Mr Roy's full profile</a>
-        <a class="btn btn-outline" href="https://www.youtube.com/watch?v=${tourYoutube}" target="_blank" rel="noopener">${ic('play')} Clinic tour on YouTube</a>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section class="section section--soft" id="stories" aria-labelledby="st-title">
+<section class="section section--flush" id="tour" aria-labelledby="cl-title">
   <div class="wrap">
     <div class="head-split">
-      <div><span class="label">Patient stories</span><h2 id="st-title">Video testimonials from our patients</h2></div>
-      <div><p>Real patients of ${C.name} talking about their treatment with Mr Roy, from the clinic's YouTube channel.</p></div>
+      <div><span class="label">Inside the clinic</span><h2 id="cl-title">Take a tour, and see the equipment we use</h2></div>
+      <div><p>Equipment matters most when it makes treatment easier to understand. This is what we use, and what it means for you.</p></div>
     </div>
-    <div class="vt-grid">
-      ${vt(tv[0], true)}
-      ${tv.slice(1).map(t => vt(t)).join('\n      ')}
+    <div class="video-wrap tour-video">
+      <video data-video data-src="assets/media/tour.mp4" data-src-hd="assets/media/tour-hd.mp4" data-src-phone="assets/media/tour-phone.mp4" muted loop playsinline preload="none" poster="assets/media/tour-poster.webp" aria-label="A walk through ${C.name}: the entrance, reception, treatment rooms and the dental team"></video>
+      <button class="video-btn" type="button">${ic('play')}${ic('pause').replace('aria-hidden="true"', 'aria-hidden="true" hidden')}<span data-label>Play the clinic tour</span></button>
     </div>
+    <ol class="equip">
+      ${equipment.map(([t, p], i) => `<li><span class="num">0${i + 1}</span><h3>${t}</h3><p>${p}</p></li>`).join('\n      ')}
+    </ol>
   </div>
 </section>
 
-<section class="section" id="prices" aria-labelledby="pr-title">
+<section class="section section--soft" id="reviews" aria-labelledby="rv-title">
+  <!-- PLACEHOLDER patient stories and rating for the concept site — replace with the clinic's live Google reviews before launch (see tools/content.mjs) -->
   <div class="wrap">
     <div class="head-split">
-      <div><span class="label">Price guide</span><h2 id="pr-title">Clear prices, confirmed at your consultation</h2></div>
-      <div><p>We treat each patient individually and give you an accurate price after your consultation with Mr Roy. As a guide, our prices are:</p></div>
+      <div><span class="label">Patient stories</span><h2 id="rv-title">In our patients' words</h2></div>
+      <div class="score">
+        <svg class="score-g" viewBox="0 0 48 48" aria-hidden="true"><use href="#i-google"/></svg>
+        <span class="score-num"><b>${reviews.rating}</b>${stars(5)}<small>Rated on Google</small></span>
+        <a class="btn btn-outline btn-sm" href="${reviews.writeUrl}" target="_blank" rel="noopener">See us on Google</a>
+      </div>
     </div>
-    <div class="price-grid">
-      <div class="price-card price-card--feature"><span class="label">Start here</span><h3>Consultation</h3><b class="price-big">${C.consultation}</b><p>With Mr Roy, including an examination, an honest discussion of your options and an accurate price.</p><a class="btn btn-primary" ${bookFor('consultation')}>Book a consultation</a></div>
-      ${catOrder.map(c => `<a class="price-card" ${cLink(c)}><span class="price-ico">${iconSvg(CAT[c].icon)}</span><h3>${esc(CAT[c].title)}</h3><table class="price-table"><tbody>${CAT[c].prices.map(([x, y]) => `<tr><th scope="row">${esc(x)}</th><td>${esc(y)}</td></tr>`).join('')}</tbody></table><span class="text-link">About ${esc(lower(CAT[c].short))} ${ic('arrow-right')}</span></a>`).join('\n      ')}
+    <div class="story-cards">
+      ${stories.map(([n, what, color, text]) => `<figure class="story-card">
+        ${stars(5)}
+        <blockquote>“${text}”</blockquote>
+        <figcaption><span class="story-av" style="background:${color}" aria-hidden="true">${n[0]}</span><span><b>${n}</b>${what}</span></figcaption>
+      </figure>`).join('\n      ')}
     </div>
   </div>
 </section>
 
-<section class="section section--soft" id="faq" aria-labelledby="hq-title">
+<section class="section" id="faq" aria-labelledby="hq-title">
   <div class="wrap faq-layout">
     <div class="faq-side">
       <span class="label">Questions</span>
-      <h2 id="hq-title">Before your consultation</h2>
-      <p>Answers to what patients most often ask us. For anything else, call or send us a quick enquiry.</p>
-      <button class="btn btn-outline" type="button" data-enquiry>${ic('envelope')} Send a quick enquiry</button>
+      <h2 id="hq-title">Before your first visit</h2>
+      <p>Answers to what patients most often ask us. For anything else, send us a message.</p>
+      <a class="btn btn-outline" href="${WA}" target="_blank" rel="noopener">${ic('whatsapp')} Ask on WhatsApp</a>
     </div>
-    ${faqList([
-      ['How much is a consultation?', `A consultation with Mr Roy costs ${C.consultation}. He examines you, explains your options and gives you an accurate price for your treatment.`],
-      ['Who will carry out my treatment?', 'Mr Roy personally performs every treatment and procedure at Excellence Medical, from a single anti-wrinkle area to minor surgery.'],
-      ['Does it hurt?', 'Most treatments use very fine needles, with numbing cream or local anaesthetic where needed. Procedures are done under local anaesthetic, so you stay awake and comfortable.'],
-      ['Is there any downtime?', 'Most non-surgical treatments need little or none. Silhouette Soft and minor surgery may mean a day or two of mild swelling, and you go home the same day.'],
-      ['Will the result look natural?', 'That is the aim of every treatment. Mr Roy uses conservative doses and works with your natural features, and reviews you afterwards to fine-tune if needed.'],
-      ['Do I need a referral for minor surgery?', 'No. You can book directly, there is no HSE waiting list, and same-day treatment is also available.']
-    ])}
+    <div class="faq">
+      <details><summary>Will treatment hurt? ${ic('plus')}</summary><p>Most treatment is done under local anaesthetic, and we apply numbing gel before any injection. You can raise a hand to pause at any time.</p></details>
+      <details><summary>I'm nervous about dentists. Can you help? ${ic('plus')}</summary><p>Yes. Tell us when you book and we will give you a longer first appointment, explain each step before we do it, and stop whenever you ask. <a href="services/sedation-dentistry.html">Conscious sedation</a> is also available.</p></details>
+      <details><summary>How will I know what my treatment costs? ${ic('plus')}</summary><p>Each treatment page shows its starting price. After your examination you receive an itemised written estimate, and nothing starts until you have agreed to it.</p></details>
+      <details><summary>Can I pay in instalments? ${ic('plus')}</summary><p>Yes. EMI options are available for larger treatments such as implants, braces and clear aligners. Reception can give you the monthly breakdown.</p></details>
+      <details><summary>Can I get advice before I travel to Chennai? ${ic('plus')}</summary><p>Yes. Send your X-rays or photos on WhatsApp and we will outline your options and likely costs, so you can plan your visit. See <a href="international-patients.html">international patients</a>.</p></details>
+      <details><summary>Is there parking near the clinic? ${ic('plus')}</summary><p>Street parking is available in front of the clinic.</p></details>
+    </div>
   </div>
 </section>
 
-<section class="section" id="book" aria-labelledby="bk-title">
+<section class="section section--flush" id="book" aria-labelledby="bk-title">
   <div class="wrap">
     <div class="book-card">
       <div class="book-aside">
-        <span class="label">Consultations</span>
-        <h2 id="bk-title">Request a consultation</h2>
-        <p>Send us your details and our reception team will call you to arrange a time. Your consultation with Mr Roy is ${C.consultation}, and you will leave with an accurate price for your treatment.</p>
+        <span class="label">Appointments</span>
+        <h2 id="bk-title">Book your visit</h2>
+        <p>Send us your details and our reception team will call to confirm, usually within an hour during opening hours. For severe pain or swelling, please call us directly.</p>
         <ul class="contact-list">
           <li>${ic('phone')}<span><a href="tel:${C.tel}">${C.phone}</a><small>Reception</small></span></li>
-          <li>${ic('envelope')}<span><a href="mailto:${C.email}">${C.email}</a><small>We reply within one working day</small></span></li>
-          <li>${ic('clock')}<span><span class="open-badge" data-open-badge>Mon–Fri 10:30 AM – 4:30 PM</span><small>Saturday &amp; Sunday closed</small></span></li>
+          <li>${ic('clock')}<span><span class="open-badge" data-open-badge>Mon–Sat 8 AM – 9 PM</span><small>Mon–Sat 8 AM – 9 PM · Sunday 9 AM – 1 PM</small></span></li>
+          <li>${ic('kit-medical')}<span>Emergency helpline<small>Answered 24 hours a day</small></span></li>
         </ul>
+        <p class="book-note"><b>Nervous about dentists?</b> Tell us when you book. We give you a longer first visit and stop whenever you ask.</p>
       </div>
-      ${bookForm('book')}
+      <form class="book-form" id="bookForm" novalidate>
+        <div class="field" data-field="name"><label for="f-name">Full name</label><input id="f-name" name="name" autocomplete="name" required><span class="err" role="alert"></span></div>
+        <div class="field" data-field="phone"><label for="f-phone">Phone number</label><input id="f-phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" placeholder="+91 98765 43210" required><span class="err" role="alert"></span></div>
+        <div class="field"><label for="f-service">Treatment</label><select id="f-service" name="service">${serviceOptions('Not sure, please advise')}</select></div>
+        <div class="field"><label for="f-doctor">Preferred dentist</label><select id="f-doctor" name="doctor">${doctorOptions('No preference')}</select></div>
+        <div class="field" data-field="date"><label for="f-date">Preferred date</label><input id="f-date" name="date" type="date" required><span class="err" role="alert"></span></div>
+        <div class="field"><label for="f-email">Email <span class="opt">(optional)</span></label><input id="f-email" name="email" type="email" autocomplete="email"></div>
+        <fieldset class="field field--full" data-field="slot">
+          <legend>Preferred time</legend>
+          <div class="slots">
+            <input type="radio" name="slot" id="s-m" value="Morning"><label for="s-m">Morning<small>8 AM – 12 PM</small></label>
+            <input type="radio" name="slot" id="s-a" value="Afternoon"><label for="s-a">Afternoon<small>12 – 4 PM</small></label>
+            <input type="radio" name="slot" id="s-e" value="Evening"><label for="s-e">Evening<small>4 – 9 PM</small></label>
+          </div>
+          <span class="err" role="alert"></span>
+        </fieldset>
+        <div class="field field--full"><label for="f-note">Message <span class="opt">(optional)</span></label><textarea id="f-note" name="note" placeholder="Symptoms, questions, or anything we should know"></textarea></div>
+        <div class="form-foot">
+          <p>We will call to confirm your appointment. Your details are only used to arrange your visit.</p>
+          <button class="btn btn-primary" type="submit">Request appointment</button>
+        </div>
+      </form>
     </div>
   </div>
 </section>
-${reviewsBand()}
-${findUs()}
+${findUs(R)}
 
-</main>`;
-}
-
-/* ---------- Mr Roy's profile, shown in a dialog ---------- */
-const QV = {
-  icons: { phone: ic('phone') },
-  phone: C.phone, tel: C.tel,
-  roy: { name: DR.name, quals: DR.quals, role: DR.role, photo: DR.photo, about: DR.about, timeline: DR.timeline, focus: DR.focus }
-};
-
-const modals = `
-<div class="modal qv" id="qvModal" aria-hidden="true">
-  <div class="modal-scrim" data-modal-close></div>
-  <div class="modal-card qv-card" role="dialog" aria-modal="true" aria-labelledby="qv-title">
-    <button class="modal-x" type="button" data-modal-close aria-label="Close">${ic('xmark')}</button>
-    <div class="qv-body" id="qvBody"></div>
-  </div>
-</div>
+</main>` + `
 <div class="modal" id="bookModal" aria-hidden="true">
   <div class="modal-scrim" data-modal-close></div>
   <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="m-title">
     <h3 id="m-title">Thank you, we have your request</h3>
-    <p>Our reception team will call you to arrange your consultation.</p>
+    <p>Our reception team will call you shortly to confirm your appointment.</p>
     <div class="summary">
       <div><b>Name:</b> <span id="sumName"></span></div>
       <div><b>Treatment:</b> <span id="sumService"></span></div>
+      <div><b>Dentist:</b> <span id="sumDoctor"></span></div>
       <div><b>Preferred time:</b> <span id="sumWhen"></span></div>
     </div>
     <div class="modal-actions">
-      <a class="btn btn-primary" id="mailSend" href="mailto:${C.email}">${ic('envelope')} Also send by email</a>
+      <a class="btn btn-wa" id="waSend" href="https://wa.me/${C.wa}" target="_blank" rel="noopener">${ic('whatsapp')} Also send on WhatsApp</a>
       <button class="btn btn-outline" type="button" data-modal-close>Close</button>
     </div>
   </div>
-</div>
-<div class="modal" id="enquiryModal" aria-hidden="true">
-  <div class="modal-scrim" data-modal-close></div>
-  <div class="modal-card modal-card--form" role="dialog" aria-modal="true" aria-labelledby="q-title">
-    <button class="modal-x" type="button" data-modal-close aria-label="Close">${ic('xmark')}</button>
-    <h3 id="q-title">Quick enquiry</h3>
-    <p>Leave your details and we will call you back.</p>
-    <form class="enquiry-form" id="enquiryForm" novalidate>
-      <div class="field" data-field="name"><label for="q-name">Name</label><input id="q-name" name="name" autocomplete="name" required><span class="err" role="alert"></span></div>
-      <div class="field" data-field="phone"><label for="q-phone">Phone</label><input id="q-phone" name="phone" type="tel" autocomplete="tel" required><span class="err" role="alert"></span></div>
-      <div class="field"><label for="q-service">Treatment</label><select id="q-service" name="service">${serviceOptions('Not sure yet')}</select></div>
-      <div class="field"><label for="q-note">Your question <span class="opt">(optional)</span></label><textarea id="q-note" name="note" rows="3"></textarea></div>
-      <button class="btn btn-primary" type="submit">Send enquiry</button>
-    </form>
-  </div>
-</div>`;
-
-/* ---------- write the single file ---------- */
-const css = read('assets/site.css').toString();
-const js = read('assets/site.js').toString();
-const video = read('assets/media/tour.mp4').toString('base64');
-const clinicVideo = read('assets/media/clinic.mp4').toString('base64');
-// index.html (hosted) streams the videos from assets/media; the Desktop copy carries them inside, so it works on its own
-const page = embed => (head(css) + chrome() + home() + modals + foot())
-  .replace('id="tourVideo" data-video', `id="tourVideo" data-src="assets/media/tour.mp4" data-src-phone="assets/media/tour-phone.mp4" data-embed="tour-data" data-video`) + `
-<script type="application/json" id="qv-data">${JSON.stringify(QV).replace(/</g, '\\u003c')}</script>${embed ? `
-<script type="application/octet-stream" id="tour-data">${video}</script>
-<script type="application/octet-stream" id="clinic-data">${clinicVideo}</script>` : ''}
-<script>
-${js}
-</script>
-</body>
-</html>
-`;
-const outs = [[join(ROOT, 'index.html'), false], [join(ROOT, '..', 'Excellence.html'), true]];
-for (const [f, embed] of outs) {
-  writeFileSync(f, page(embed));
-  console.log(`built ${f} (${(statSync(f).size / 1048576).toFixed(2)} MB${embed ? ', video inside' : ', video from assets/media'})`);
+</div>` + foot(R, true);
 }
+
+/* ---------- treatment page ---------- */
+function servicePage(k) {
+  const R = '../', s = S[k], d = D[s.doctor], g = groupOf(k);
+  const book = `../index.html?service=${k}#book`;
+  const others = all.filter(x => x !== k);
+  return head({ R, title: `${s.title} in Chennai | ${C.name}, Kodambakkam`, desc: `${s.title} at ${C.name}, Kodambakkam, Chennai. ${s.lead} ${priceLabel(s)}.`, image: `assets/img/${s.image}.webp` }) +
+    chrome(R, false, 'services') + `
+<main id="main">
+
+<section class="page-head" aria-labelledby="pg-title">
+  <div class="wrap split">
+    <div>
+      ${crumbs(R, [['Treatments', '../services/index.html'], ...(g ? [[g.label]] : []), [s.title]])}
+      <h1 id="pg-title">${esc(s.title)}</h1>
+      <p class="lead">${esc(s.lead)}</p>
+      <ul class="hero-facts hero-facts--page">${s.facts.map(([a, b]) => `<li><b>${a}</b>${b}</li>`).join('')}</ul>
+      <div class="actions">
+        <a class="btn btn-primary" href="${book}">Book a consultation</a>
+        <a class="btn btn-outline" href="tel:${C.tel}">${ic('phone')} ${C.phone}</a>
+      </div>
+    </div>
+    <div class="page-photo">${svcImg(R, s, '(max-width: 900px) 100vw, 600px', true)}</div>
+  </div>
+</section>
+
+<section class="section" aria-labelledby="ab-title">
+  <div class="wrap split split--top">
+    <div class="prose">
+      <h2 id="ab-title">About ${esc(s.aboutTitle || s.title.toLowerCase())}</h2>
+      ${s.about.map((p, i) => `<p${i ? '' : ' style="margin-top:16px"'}>${esc(p)}</p>`).join('\n      ')}
+    </div>
+    <div class="box">
+      <h3>This may be suitable if you have</h3>
+      <ul class="ticks">${s.suitable.map(t => `<li>${ic('check')}<span>${esc(t)}</span></li>`).join('')}</ul>
+    </div>
+  </div>
+</section>
+
+<section class="section section--soft" aria-labelledby="of-title">
+  <div class="wrap">
+    <div class="section-head"><h2 id="of-title">What we offer</h2></div>
+    <div class="cards-3">
+      ${s.offers.map(o => `<div class="box offer"><h3>${esc(o.title)}</h3><ul>${o.items.map(t => `<li>${esc(t)}</li>`).join('')}</ul></div>`).join('\n      ')}
+    </div>
+  </div>
+</section>
+
+<section class="section" aria-labelledby="fa-title">
+  <div class="wrap">
+    <div class="section-head"><h2 id="fa-title">How treatment works</h2></div>
+    <ol class="steps">
+      ${s.steps.map(([a, b]) => `<li><h3>${esc(a)}</h3><p>${esc(b)}</p></li>`).join('\n      ')}
+    </ol>
+  </div>
+</section>
+
+<section class="section section--soft" aria-labelledby="fq-title">
+  <div class="wrap split split--top">
+    <div>
+      <span class="label">Your dentist</span>
+      <a class="dr-strip${d.round ? ' dr-strip--round' : ''}" href="../doctors/${s.doctor}.html">
+        <img src="../assets/img/${d.round ? d.image : d.image + '-240'}.webp" alt="Portrait of ${esc(d.name)}" width="${d.round ? 320 : 240}" height="${d.round ? 320 : 300}" loading="lazy" decoding="async">
+        <div><h3>${esc(d.name)}</h3><p>${esc(d.role)}<br>${esc(d.quals)}${d.speciality ? ` (${esc(d.speciality)})` : ''}</p><span class="text-link">View profile ${ic('arrow-right')}</span></div>
+      </a>
+    </div>
+    <div>
+      <h2 id="fq-title" style="margin-bottom:18px">Frequently asked questions</h2>
+      <div class="faq">
+        ${s.faq.map(([q, a]) => `<details><summary>${esc(q)} ${ic('plus')}</summary><p>${esc(a)}</p></details>`).join('\n        ')}
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" aria-label="Book a consultation">
+  <div class="wrap">${cta(R, 'Book a consultation', 'You will leave with a written treatment plan and estimate.', book)}
+  </div>
+</section>
+${moreTreatments(R, others)}
+${reviewsBand(R)}
+${findUs(R)}
+
+</main>` + foot(R, false);
+}
+
+/* ---------- all treatments ---------- */
+function servicesIndex() {
+  const R = '../';
+  const groups = [...menu.filter(m => typeof m === 'object'), { label: 'General and specialist care', items: menu.filter(m => typeof m === 'string') }];
+  return head({ R, title: `All dental treatments | ${C.name}, Kodambakkam, Chennai`, desc: `All ${all.length} treatments at ${C.name}: teeth replacement, implants, braces and aligners, root canals, oral surgery, laser, sedation, children's dentistry and more.` }) +
+    chrome(R, false, 'services') + `
+<main id="main">
+
+<section class="page-head page-head--plain" aria-labelledby="pg-title">
+  <div class="wrap">
+    ${crumbs(R, [['Treatments']])}
+    <span class="label">Treatments</span>
+    <h1 id="pg-title">All treatments</h1>
+    <p class="lead">${all.length} treatments under one roof, from a six-monthly check-up to a complete smile makeover. Every one is explained beforehand and priced in writing.</p>
+    <nav class="jump" aria-label="Treatment groups">${groups.map((g, i) => `<a href="#g${i}">${esc(g.label)}</a>`).join('')}</nav>
+  </div>
+</section>
+${groups.map((g, i) => `
+<section class="section${i % 2 ? ' section--soft' : ''}" id="g${i}" aria-labelledby="g${i}-title">
+  <div class="wrap">
+    <div class="section-head"><h2 id="g${i}-title">${esc(g.label)}</h2></div>
+    <div class="cards-3">
+      ${g.items.map(k => tCard(R, k)).join('\n      ')}
+    </div>
+  </div>
+</section>`).join('')}
+
+<section class="section" aria-label="Book a consultation">
+  <div class="wrap">${cta(R, 'Not sure which treatment you need?', 'Book a consultation and we will examine, explain your options and give you a written estimate.', '../index.html#book')}
+  </div>
+</section>
+${reviewsBand(R)}
+${findUs(R)}
+
+</main>` + foot(R, false);
+}
+
+/* ---------- dentist page ---------- */
+function doctorPage(k) {
+  const R = '../', d = D[k];
+  const first = d.short;
+  const book = `../index.html?doctor=${k}#book`;
+  const others = [...leaders, ...team].filter(x => x !== k);
+  return head({ R, title: `${d.name}, ${d.role.split(' · ')[0]} | ${C.name}, Chennai`, desc: `${d.name} — ${d.role} at ${C.name}, Kodambakkam, Chennai. ${d.quals}${d.speciality ? ` (${d.speciality})` : ''}. ${d.facts[0][1]} experience.`, image: `assets/img/${d.image}.webp` }) +
+    chrome(R, false, 'about') + `
+<main id="main">
+
+<section class="page-head" aria-labelledby="pg-title">
+  <div class="wrap split">
+    <div>
+      ${crumbs(R, [['Our dentists', '../index.html#dentists'], [d.name]])}
+      <span class="label">${esc(d.role)}</span>
+      <h1 id="pg-title">${esc(d.name)}</h1>
+      <p class="lead">${esc(d.quals)}${d.speciality ? ` (${esc(d.speciality)})` : ''}</p>
+      <ul class="hero-facts hero-facts--page">${d.facts.map(([a, b]) => `<li><b>${a}</b>${b}</li>`).join('')}</ul>
+      <div class="actions">
+        <a class="btn btn-primary" href="${book}">Book with ${esc(first)}</a>
+        <a class="btn btn-outline" href="tel:${C.tel}">${ic('phone')} ${C.phone}</a>
+      </div>
+    </div>
+    <div class="page-photo ${d.round ? 'page-photo--round' : 'page-photo--portrait'}">${drImg(R, d, '(max-width: 900px) 320px, 380px', true).replace(`src="../assets/img/${d.image}-480.webp"`, `src="../assets/img/${d.image}.webp"`)}</div>
+  </div>
+</section>
+
+<section class="section" aria-labelledby="ab-title">
+  <div class="wrap split split--top">
+    <div class="prose">
+      <h2 id="ab-title">About ${esc(first)}</h2>
+      ${d.about.map((p, i) => `<p${i ? '' : ' style="margin-top:16px"'}>${esc(p)}</p>`).join('\n      ')}
+      <blockquote class="quote">${esc(d.quote)}<cite>${esc(d.name)}</cite></blockquote>
+    </div>
+    <div class="box">
+      <h3 style="margin-bottom:14px">Experience and training</h3>
+      <ol class="timeline">
+        ${d.timeline.map(([w, b, s]) => `<li><span class="when">${w}</span><div><b>${esc(b)}</b><span>${esc(s)}</span></div></li>`).join('\n        ')}
+      </ol>
+      <h3 style="margin:24px 0 0">Areas of focus</h3>
+      <div class="tags">${d.focus.map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>
+    </div>
+  </div>
+</section>
+
+<section class="section section--soft" aria-labelledby="tr-title">
+  <div class="wrap">
+    <div class="section-head"><h2 id="tr-title">Treatments with ${esc(first)}</h2></div>
+    <div class="cards-3">
+      ${d.treatments.map(t => tCard(R, t)).join('\n      ')}
+    </div>
+  </div>
+</section>
+
+<section class="section" aria-labelledby="od-title">
+  <div class="wrap">
+    <div class="section-head"><h2 id="od-title">Other dentists</h2></div>
+    <div class="cards-5">
+      ${others.map(o => drCard(R, o, '(max-width: 640px) calc(50vw - 30px), (max-width: 900px) calc(33vw - 30px), 210px')).join('\n      ')}
+    </div>${cta(R, `Book with ${esc(first)}`, 'Choose a date and time, and we will call to confirm.', book).replace('class="cta"', 'class="cta" style="margin-top:56px"')}
+  </div>
+</section>
+${reviewsBand(R)}
+${findUs(R)}
+
+</main>` + foot(R, false);
+}
+
+/* ---------- international patients ---------- */
+function intlPage() {
+  const R = '';
+  const stay = [['Root canal treatment and crown', '4–5 days', 'One trip'], ['Crowns and bridges', '5–7 days', 'One trip'], ['Smile makeover with veneers', '7–10 days', 'One trip'], ['Dental implants', '3–4 days, then 5–7 days', 'Two trips, 3–4 months apart'], ['Full mouth rehabilitation', '10–14 days each', 'Two trips'], ['Clear aligners', '2–3 days', 'One trip, then video reviews'], ['Teeth whitening', '1 day', 'One trip']];
+  return head({ R, title: `International patients | Dental treatment in Chennai | ${C.name}`, desc: `Planning dental treatment in Chennai from abroad? Send your X-rays on WhatsApp, get a written plan and estimate, and know exactly how long to stay. ${C.name}, Kodambakkam.`, image: 'assets/img/intl-travel.webp' }) +
+    chrome(R, false, 'intl') + `
+<main id="main">
+
+<section class="page-head" aria-labelledby="pg-title">
+  <div class="wrap split">
+    <div>
+      ${crumbs(R, [['International patients']])}
+      <span class="label">International patients</span>
+      <h1 id="pg-title">Dental treatment in Chennai, planned before you fly</h1>
+      <p class="lead">Send us your X-rays and photos, get a written plan and estimate, then travel knowing exactly how long you need to stay.</p>
+      <ul class="hero-facts hero-facts--page"><li><b>Time zone</b>IST (UTC +5:30)</li><li><b>Payment</b>Cards, UPI, bank transfer</li><li><b>Records</b>In English, emailed</li></ul>
+      <div class="actions">
+        <a class="btn btn-wa" href="${WA}" target="_blank" rel="noopener">${ic('whatsapp')} Send your X-rays</a>
+        <a class="btn btn-outline" href="index.html#book">Book a consultation</a>
+      </div>
+    </div>
+    <div class="page-photo"><img src="assets/img/intl-travel.webp" srcset="assets/img/intl-travel-600.webp 600w, assets/img/intl-travel.webp 1200w" sizes="(max-width: 900px) 100vw, 600px" alt="A traveller walking with a suitcase outside an airport terminal" width="1200" height="800" fetchpriority="high"></div>
+  </div>
+</section>
+
+<section class="section" aria-labelledby="hw-title">
+  <div class="wrap">
+    <div class="section-head"><h2 id="hw-title">How it works</h2><p>Most of the planning happens before you travel, so your time in Chennai is spent on treatment, not waiting.</p></div>
+    <ol class="steps steps--4">
+      <li><h3>Share your records</h3><p>Send recent X-rays, photos of your teeth and a note about what you would like changed, on WhatsApp or email.</p></li>
+      <li><h3>Video consultation</h3><p>The specialist talks you through the options and sends a written treatment plan, timeline and estimate in rupees, with the US dollar equivalent.</p></li>
+      <li><h3>Treatment in Chennai</h3><p>Appointments are booked back to back, and our in-house laboratory keeps waiting time between visits to a minimum.</p></li>
+      <li><h3>Aftercare at home</h3><p>You leave with your records and X-rays in English, and we stay in touch on WhatsApp for any questions.</p></li>
+    </ol>
+  </div>
+</section>
+
+<section class="section section--soft" aria-labelledby="st-title">
+  <div class="wrap split split--top">
+    <div>
+      <h2 id="st-title">How long to stay</h2>
+      <p class="muted" style="margin-top:12px">Typical time in Chennai for common treatments. Your written plan confirms the exact dates for your case.</p>
+      <table class="stay">
+        <thead><tr><th scope="col">Treatment</th><th scope="col">Time in Chennai</th><th scope="col">Trips</th></tr></thead>
+        <tbody>${stay.map(([a, b, c]) => `<tr><th scope="row">${a}</th><td>${b}</td><td>${c}</td></tr>`).join('')}</tbody>
+      </table>
+    </div>
+    <div class="box">
+      <h3>We help you with</h3>
+      <ul class="ticks">${['Airport pickup on request', 'Hotels and serviced apartments nearby', 'A written estimate in rupees and US dollars', 'Long appointments that fit your trip', 'Records and X-rays for your home dentist', 'A fit-to-fly letter if you need one'].map(t => `<li>${ic('check')}<span>${t}</span></li>`).join('')}</ul>
+      <a class="btn btn-primary" style="margin-top:22px" href="${WA}" target="_blank" rel="noopener">${ic('whatsapp')} Plan my visit</a>
+    </div>
+  </div>
+</section>
+
+<section class="section" aria-labelledby="fq-title">
+  <div class="wrap faq-layout">
+    <div class="faq-side">
+      <span class="label">Questions</span>
+      <h2 id="fq-title">Travelling for treatment</h2>
+      <p>If your question isn't here, message us — we usually reply within a few hours.</p>
+    </div>
+    <div class="faq">
+      <details><summary>Can you give me a price before I travel? ${ic('plus')}</summary><p>Yes. From recent X-rays and photos we can give a written estimate. We confirm it after examining you in person, and if anything changes we agree the new cost before continuing.</p></details>
+      <details><summary>How do I pay? ${ic('plus')}</summary><p>By international credit or debit card, UPI, or bank transfer. Payments are taken stage by stage as treatment is done, not all in advance.</p></details>
+      <details><summary>What if I have a problem after I fly home? ${ic('plus')}</summary><p>Message us first — many questions can be answered from a photo. You leave with full records so a local dentist can help if needed, and any warranty repair on our work is done free on your next visit.</p></details>
+      <details><summary>Which treatments suit a single trip? ${ic('plus')}</summary><p>Root canals, crowns, bridges, veneers, whitening and dentures can usually be completed in one trip. Implants need two trips because the bone needs three to four months to heal.</p></details>
+    </div>
+  </div>
+</section>
+
+<section class="section section--flush" aria-label="Contact us">
+  <div class="wrap">${cta(R, 'Start planning your treatment', 'Send your X-rays on WhatsApp, or book a video consultation with one of our specialists.', 'index.html#book')}
+  </div>
+</section>
+${reviewsBand(R)}
+${findUs(R, "Ten minutes from Chennai Central by car, and about forty minutes from Chennai International Airport.")}
+
+</main>` + foot(R, false);
+}
+
+/* ---------- write everything ---------- */
+const out = (rel, html) => { const f = join(ROOT, rel); mkdirSync(dirname(f), { recursive: true }); writeFileSync(f, html); };
+out('index.html', home());
+out('international-patients.html', intlPage());
+out('services/index.html', servicesIndex());
+for (const k of all) out(`services/${k}.html`, servicePage(k));
+for (const k of Object.keys(D)) out(`doctors/${k}.html`, doctorPage(k));
+console.log(`built ${3 + all.length + Object.keys(D).length} pages (css ${V.css}, js ${V.js})`);
